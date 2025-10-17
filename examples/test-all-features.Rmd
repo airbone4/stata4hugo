@@ -3,7 +3,23 @@ title: "Test Document"
 author: "Test User"
 date: "2025-10-17"
 ---
+<!--more-->
 
+```{r setup, echo=FALSE, message=FALSE,results="hide"}
+library(Statamarkdown)
+knitr::opts_chunk$set(cleanlog = F)
+```
+
+```{stata, collectcode=T, echo=FALSE, message=FALSE,results="hide"}
+adopath + ".."
+adopath + "../utils/"
+set linesize 255
+```
+##  設定stata
+```{python}
+import stata_setup,
+stata_setup.config("C:/Program Files/Stata18/", "mp")
+```
 # Test Markdown to Notebook Conversion
 
 Regular markdown paragraph.
@@ -17,7 +33,7 @@ mean(x)
 ```
 
 Stata code:
-```{stata}
+```{stata,echo=FALSE}
 sysuse auto
 summarize price
 ```
