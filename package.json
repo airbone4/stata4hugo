@@ -1,0 +1,44 @@
+{
+  "name": "rmd-to-ipynb",
+  "displayName": "Rmd to ipynb",
+  "publisher": "your-name",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:extension.convertToIpynb"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.convertToIpynb",
+        "title": "Convert R/Markdown to Jupyter Notebook (.ipynb)"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "test": "npm run compile && mocha -r ts-node/register test/**/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^18.0.0",
+    "mocha": "^10.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.5",
+    "vscode": "^1.1.37"
+  }
+  ,
+  "dependencies": {
+    "unified": "^10.1.2",
+    "remark-parse": "^10.0.1",
+    "remark-stringify": "^10.0.1"
+  }
+}

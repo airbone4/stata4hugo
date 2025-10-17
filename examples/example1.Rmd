@@ -1,0 +1,23 @@
+---
+title: "Example Notebook"
+author: "Test User"
+output: html_document
+---
+
+# Introduction
+
+This is an example R Markdown document.
+
+```{r, echo=TRUE}
+x <- 1:10
+mean(x)
+```
+
+Some more text.
+
+```{r, fig.height=4, results='hide'}
+plot(x, x^2)
+```
+
+- Bullet 1
+- Bullet 2
