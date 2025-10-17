@@ -1,0 +1,36 @@
+---
+title: "Test Document"
+author: "Test User"
+date: "2025-10-17"
+---
+
+# Test Markdown to Notebook Conversion
+
+Regular markdown paragraph.
+
+## Code Cells
+
+R code:
+```{r}
+x <- rnorm(100)
+mean(x)
+```
+
+Stata code:
+```{stata}
+sysuse auto
+summarize price
+```
+
+R with options:
+```{r, echo=FALSE, fig.height=4}
+plot(x)
+```
+
+## Lists and Text
+
+1. Numbered list
+2. With items
+
+* Bullet point
+* Another point

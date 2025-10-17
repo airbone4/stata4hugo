@@ -21,3 +21,8 @@ plot(x, x^2)
 
 - Bullet 1
 - Bullet 2
+
+```{stata,echo=F,block.pre.class="ms-5.w-75"}
+sysuse auto
+sum
+```
