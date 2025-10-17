@@ -28,8 +28,28 @@ function nodeToMarkdown(node) {
     }
 }
 function convertMarkdownToIpynb(text) {
-    const tree = (0, unified_1.unified)().use(remark_parse_1.default).parse(text);
+    // Detect YAML front matter (--- ... --- at the top)
+    let yamlFront = '';
+    let restText = text;
+    if (text.startsWith('---')) {
+        const end = text.indexOf('---', 3);
+        if (end !== -1) {
+            yamlFront = text.slice(0, end + 3).trim();
+            restText = text.slice(end + 3);
+        }
+    }
+    const tree = (0, unified_1.unified)().use(remark_parse_1.default).parse(restText);
     const cells = [];
+    // If YAML front matter found, treat as raw code cell at top
+    if (yamlFront) {
+        cells.push({
+            cell_type: 'raw',
+            execution_count: null,
+            metadata: { language: 'yaml', raw: true },
+            outputs: [],
+            source: yamlFront + '\n'
+        });
+    }
     // We'll iterate and group consecutive non-code nodes into one markdown cell.
     let pendingMarkdown = [];
     function flushMarkdown() {

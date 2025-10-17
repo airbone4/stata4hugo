@@ -24,9 +24,31 @@ function nodeToMarkdown(node: Content): string {
 }
 
 export function convertMarkdownToIpynb(text: string) {
-  const tree = unified().use(remarkParse).parse(text) as Root;
+  // Detect YAML front matter (--- ... --- at the top)
+  let yamlFront = '';
+  let restText = text;
+  if (text.startsWith('---')) {
+    const end = text.indexOf('---', 3);
+    if (end !== -1) {
+      yamlFront = text.slice(0, end + 3).trim();
+      restText = text.slice(end + 3);
+    }
+  }
+
+  const tree = unified().use(remarkParse).parse(restText) as Root;
 
   const cells: any[] = [];
+
+  // If YAML front matter found, treat as raw code cell at top
+  if (yamlFront) {
+    cells.push({
+      cell_type: 'raw',
+      execution_count: null,
+      metadata: { language: 'yaml', raw: true },
+      outputs: [],
+      source: yamlFront + '\n'
+    });
+  }
 
   // We'll iterate and group consecutive non-code nodes into one markdown cell.
   let pendingMarkdown: string[] = [];
@@ -38,7 +60,7 @@ export function convertMarkdownToIpynb(text: string) {
       metadata: {},
       source: pendingMarkdown.join('')
     });
-    pendingMarkdown = [];
+    pendingMarkdown = []; 
   }
 
   for (const node of tree.children) {

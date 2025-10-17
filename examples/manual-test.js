@@ -1,7 +1,7 @@
 // Manual test script: convert example1.Rmd to example1.ipynb
 const fs = require('fs');
 const path = require('path');
-const { convertMarkdownToIpynb } = require('../out/converter.js');
+const { convertMarkdownToIpynb } = require('../out/src/converter.js');
 
 const inputPath = path.join(__dirname, 'example1.Rmd');
 const outputPath = path.join(__dirname, 'example1.ipynb');
