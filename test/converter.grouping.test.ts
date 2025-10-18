@@ -1,4 +1,4 @@
-import { convertMarkdownToIpynb } from '../converter';
+import { convertMarkdownToIpynb } from '../src/converter';
 import { strict as assert } from 'assert';
 
 describe('converter grouping', () => {

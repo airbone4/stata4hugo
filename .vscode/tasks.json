@@ -10,6 +10,41 @@
         "isDefault": true
       },
       "problemMatcher": ["$tsc"]
-    }
+    },
+       {
+            "label": "ipynb to md",
+            "type": "shell",
+            //"command": "rscript --encoding=UTF-8 single.r ${relativeFile}"
+            //
+            "command": "echo convert ipynb to md",
+            "windows":{"command": "convert.bat ${relativeFile} ${command:python.interpreterPath}"},
+            "osx":{
+              "command": "${command:python.interpreterPath}",
+              
+              "args": [
+                "-m",
+                "jupyter",
+                "nbconvert",
+                "${relativeFile}",
+                "--to",
+                "markdown",
+                "--NbConvertApp.output_files_dir=\"${fileBasenameNoExtension}.files\""
+              ],			
+            }
+        },
+        {
+            "label": "publish",
+            "type": "shell",
+            "command": "alarpublish",
+			      "dependsOrder": "sequence",
+			      "dependsOn": ["build md"]			
+        },
+        {
+            "label": "Rmd to md",
+            "type": "shell",
+            "command": "rscript --encoding=UTF-8 single.r ${relativeFile}"
+ 
+
+        } 		
   ]
 }

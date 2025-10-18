@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const converter_1 = require("../converter");
+const converter_1 = require("../src/converter");
 const assert_1 = require("assert");
 describe('converter grouping', () => {
     it('groups consecutive markdown blocks into one markdown cell', () => {

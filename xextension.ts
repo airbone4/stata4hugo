@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { convertMarkdownToIpynb } from './converter';
+import { convertMarkdownToIpynb } from './src/converter';
 import * as path from 'path';
 import * as fs from 'fs';
 

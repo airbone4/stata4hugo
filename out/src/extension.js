@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deactivate = exports.activate = void 0;
 const vscode = __importStar(require("vscode"));
 const converter_1 = require("./converter");
+const ipynbToMd_1 = require("./ipynbToMd");
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 function activate(context) {
@@ -52,6 +53,30 @@ function activate(context) {
         }
     });
     context.subscriptions.push(disposable);
+    const disposable2 = vscode.commands.registerCommand('extension.convertIpynbToMd', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('Open a .ipynb file first.');
+            return;
+        }
+        const doc = editor.document;
+        const ext = path.extname(doc.fileName).toLowerCase();
+        if (ext !== '.ipynb') {
+            vscode.window.showWarningMessage('File is not an .ipynb file, attempting conversion anyway.');
+        }
+        try {
+            const text = doc.getText();
+            const nb = JSON.parse(text);
+            const md = (0, ipynbToMd_1.convertIpynbToMarkdown)(nb);
+            const outPath = doc.fileName.replace(/\.ipynb$/i, '') + '.md';
+            fs.writeFileSync(outPath, md, 'utf8');
+            vscode.window.showInformationMessage(`Markdown written to ${outPath}`);
+        }
+        catch (err) {
+            vscode.window.showErrorMessage('Conversion failed: ' + (err.message || String(err)));
+        }
+    });
+    context.subscriptions.push(disposable2);
 }
 exports.activate = activate;
 function deactivate() { }

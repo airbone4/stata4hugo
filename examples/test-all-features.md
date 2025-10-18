@@ -3,30 +3,38 @@ title: "Test Document"
 author: "Test User"
 date: "2025-10-17"
 ---
+
 <!--more-->
 
-```{r setup, echo=FALSE, message=FALSE,results="hide"}
+
+
+
+```python
 library(Statamarkdown)
 knitr::opts_chunk$set(cleanlog = F)
+
 ```
 
-```{stata, collectcode=T, echo=FALSE, message=FALSE,results="hide"}
+
+```python
+%%stata
 adopath + ".."
 adopath + "../utils/"
 set linesize 255
+
 ```
-##  設定stata
-```{python}
+
+## 設定stata
+
+
+
+
+```python
 import stata_setup,
 stata_setup.config("C:/Program Files/Stata18/", "mp")
+
 ```
-```python
-#這裡是普通的fenced block code
-```
-這裡是分隔帶
-```stata
-// 這裡也是普通段落
-```
+
 # Test Markdown to Notebook Conversion
 
 Regular markdown paragraph.
@@ -34,26 +42,44 @@ Regular markdown paragraph.
 ## Code Cells
 
 R code:
-```{r}
+
+
+
+
+```python
 x <- rnorm(100)
 mean(x)
+
 ```
 
 Stata code:
-```{stata,echo=FALSE}
+
+
+
+
+```python
+%%stata
 sysuse auto
 summarize price
+
 ```
 
 R with options:
-```{r, echo=FALSE, fig.height=4}
+
+
+
+
+```python
 plot(x)
+
 ```
 
 ## Lists and Text
 
-1. Numbered list
-2. With items
+ - 
+ - 
 
-* Bullet point
-* Another point
+ - 
+ - 
+
+
