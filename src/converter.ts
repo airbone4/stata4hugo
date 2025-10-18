@@ -65,20 +65,29 @@ export function convertMarkdownToIpynb(text: string) {
 
   for (const node of tree.children) {
     if (node.type === 'code') {
-      flushMarkdown();
       const c = node as Code;
       // parse fenced code info by combining c.lang and c.meta into one info string
       const infoParts: string[] = [];
       if (c.lang) infoParts.push(String(c.lang));
       if ((c as any).meta) infoParts.push(String((c as any).meta));
-      let info = infoParts.join(' ').trim();
+      const rawInfo = infoParts.join(' ').trim();
+
+      // If the fence is NOT curly-braced (e.g. ```python), keep it as a fenced code block in markdown
+      const isCurly = rawInfo.startsWith('{') && rawInfo.endsWith('}');
+      if (!isCurly) {
+        // treat as markdown fenced code (do not flush pending markdown yet — group naturally)
+        pendingMarkdown.push(nodeToMarkdown(node as Content));
+        continue;
+      }
+
+      // For curly-braced chunks, convert to a code cell
+      flushMarkdown();
+      let info = rawInfo;
       let lang = '';
       let metadata: any = {};
       if (info.length > 0) {
-        // remove surrounding braces if present
-        if (info.startsWith('{') && info.endsWith('}')) {
-          info = info.slice(1, -1).trim();
-        }
+        // remove surrounding braces
+        info = info.slice(1, -1).trim();
 
         // split by commas first
         const parts = info.split(',').map(p => p.trim()).filter(p => p.length > 0);
