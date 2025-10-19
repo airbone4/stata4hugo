@@ -9,7 +9,9 @@ editext: Rmarkdown
 <!--more-->
 <!--more-->
 
-
+```stata
+xxxxxxxxxxxxxxxxxx
+```
 ```{r setup, echo=FALSE, message=FALSE,results="hide"}
 library(Statamarkdown)
 knitr::opts_chunk$set(cleanlog = F)

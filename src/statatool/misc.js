@@ -12,10 +12,12 @@ const { stataoutputhook } = require('./stataoutputhook');
 class StataMarkdown {
     constructor() {
         this.hook_orig = null;
-        this.globalVariables = new Map();
+        //note2: -1
+        //this.globalVariables = new Map();
     }
 
     // Equivalent to .onLoad
+ 
     onLoad() {
         if (!utils) {
             throw new Error("Requires utils package.");
@@ -23,7 +25,7 @@ class StataMarkdown {
         // Set global variables
         this.globalVariables.set("hook_orig", null);
     }
-
+  
     // onAttach(): 這裡應該是說如果collect=T, 那麼就把目前的code 放到 profile.do 裡面去
     //notes: + prefix async
     async onAttach() {

@@ -1,6 +1,9 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { Root, Content, Paragraph, Heading, Code, Literal } from 'mdast';
+//note2 +1
+const {doStata} = require('./statatool/dostata');
+
 
 function nodeToMarkdown(node: Content): string {
   // Simple serializer for common block nodes to markdown source
@@ -23,7 +26,7 @@ function nodeToMarkdown(node: Content): string {
   }
 }
 
-export function convertMarkdownToIpynb(text: string) {
+export async function convertMarkdownToIpynb(text: string) {
   // Detect YAML front matter (--- ... --- at the top)
   let yamlFront = '';
   let restText = text;
@@ -114,10 +117,12 @@ export function convertMarkdownToIpynb(text: string) {
       }
 
       let codeSource = (c.value || '') + '\n';
-      if ((lang || '').toLowerCase() === 'stata') {
-        // Prepend magic command for stata
-        codeSource = '%%stata\n' + codeSource;
-      }
+      //note2 -1b
+      // if ((lang || '').toLowerCase() === 'stata') {
+      //   // Prepend magic command for stata
+      //   codeSource = '%%stata\n' + codeSource;
+      // }
+      //code block 直接進celss
       cells.push({
         cell_type: 'code',
         execution_count: null,
@@ -125,6 +130,16 @@ export function convertMarkdownToIpynb(text: string) {
         outputs: [],
         source: codeSource
       });
+      if ((lang || '').toLowerCase() === 'stata') {
+        const rst=await doStata(codeSource);
+
+ 
+        const rstnode={type:'code',value:rst} as Literal;
+        pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
+      }
+
+
+
     } else {
       const md = nodeToMarkdown(node as Content);
       if (md.trim().length === 0) continue;

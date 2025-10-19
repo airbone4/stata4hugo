@@ -3,15 +3,15 @@ import { convertMarkdownToIpynb } from './converter';
 import { convertIpynbToMarkdown } from './ipynbToMd';
 import * as path from 'path';
 import * as fs from 'fs';
-const knitr = require('./statatool/knitr');
-const { find_stata } = require('./statatool/find_stata');
-const { StataMarkdown } = require('./statatool/misc');
+//const knitr = require('./statatool/knitr');
+// const { find_stata } = require('./statatool/find_stata');
+// const { StataMarkdown } = require('./statatool/misc');
 
-const { stata_engine } = require('./statatool/stata_engine');
-const { stataoutput } = require('./statatool/stataoutputhook');
+// const { stata_engine } = require('./statatool/stata_engine');
+// const { stataoutput } = require('./statatool/stataoutputhook');
+const {doStata} = require('./statatool/dostata');
 
-
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   // 指令1: 轉 md/rmd to ipynb, 同時必須在package.json 定義指令
   const disposable = vscode.commands.registerCommand('extension.convertToIpynb', async () => {
     const editor = vscode.window.activeTextEditor;
@@ -28,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     try { 
-      const nb = convertMarkdownToIpynb(text);
+      const nb = await convertMarkdownToIpynb(text);
       
       const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
       fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
@@ -83,17 +83,13 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     try { 
-      //const nb = convertMarkdownToIpynb(text);
-        // Initialize StataMarkdown
-        const statamd = new StataMarkdown();
-        await statamd.onLoad();
+        const nb = await convertMarkdownToIpynb(text);
+        const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
         
-        // Find Stata executable
-        const stataPath = await find_stata(true);      
-        vscode.window.showInformationMessage(`Found Stata at: ${stataPath}`);
-      // const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
-      // fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
-      // vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
+
+    
+       fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
+       vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
     } catch (err: any) {
       vscode.window.showErrorMessage('Conversion failed: ' + (err.message || String(err)));
     }
