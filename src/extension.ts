@@ -3,12 +3,12 @@ import { convertMarkdownToIpynb } from './converter';
 import { convertIpynbToMarkdown } from './ipynbToMd';
 import * as path from 'path';
 import * as fs from 'fs';
-const knitr = require('statatool/knitr');
-const { find_stata } = require('statatool/find_stata');
-const { StataMarkdown } = require('statatool/misc');
+const knitr = require('./statatool/knitr');
+const { find_stata } = require('./statatool/find_stata');
+const { StataMarkdown } = require('./statatool/misc');
 
-const { stata_engine } = require('statatool/stata_engine');
-const { stataoutput } = require('statatool/stataoutputhook');
+const { stata_engine } = require('./statatool/stata_engine');
+const { stataoutput } = require('./statatool/stataoutputhook');
 
 
 export function activate(context: vscode.ExtensionContext) {

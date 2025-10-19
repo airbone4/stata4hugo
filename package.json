@@ -1,7 +1,7 @@
 {
   "name": "rmd-to-ipynb",
-  "displayName": "Rmd to ipynb",
-  "publisher": "your-name",
+  "displayName": "linchao's huto tool",
+  "publisher": "linchao",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.60.0"
@@ -10,7 +10,7 @@
     "Other"
   ],
   "activationEvents": [],
-  "main": "./out/src/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
@@ -20,7 +20,11 @@
       {
         "command": "extension.convertIpynbToMd",
         "title": "Hugo tool: Jupyter notebook (.ipynb) to Markdown (.md)"
-      } 
+      },
+      {
+        "command": "extension.hugotest",
+        "title": "Hugo tool: 測試"
+      }  
     ]
   },
   "scripts": {

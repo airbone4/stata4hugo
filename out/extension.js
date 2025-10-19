@@ -29,11 +29,11 @@ const converter_1 = require("./converter");
 const ipynbToMd_1 = require("./ipynbToMd");
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
-const knitr = require('statatool/knitr');
-const { find_stata } = require('statatool/find_stata');
-const { StataMarkdown } = require('statatool/misc');
-const { stata_engine } = require('statatool/stata_engine');
-const { stataoutput } = require('statatool/stataoutputhook');
+const knitr = require('./statatool/knitr');
+const { find_stata } = require('./statatool/find_stata');
+const { StataMarkdown } = require('./statatool/misc');
+const { stata_engine } = require('./statatool/stata_engine');
+const { stataoutput } = require('./statatool/stataoutputhook');
 function activate(context) {
     // 指令1: 轉 md/rmd to ipynb, 同時必須在package.json 定義指令
     const disposable = vscode.commands.registerCommand('extension.convertToIpynb', async () => {
@@ -86,34 +86,35 @@ function activate(context) {
     });
     context.subscriptions.push(disposable2);
     // 指令3: 測試用的指令
-    // const disposable3 = vscode.commands.registerCommand('extension.hugotest', async () => {
-    //   const editor = vscode.window.activeTextEditor;
-    //   if (!editor) {
-    //     vscode.window.showErrorMessage('Open a Markdown or R Markdown file first.');
-    //     return;
-    //   }
-    //   const doc = editor.document;
-    //   const text = doc.getText();
-    //   const ext = path.extname(doc.fileName).toLowerCase();
-    //   if (!['.md', '.rmd', '.rmarkdown'].includes(ext)) {
-    //     vscode.window.showWarningMessage('File does not have a .md or .rmd extension, attempting conversion anyway.');
-    //   }
-    //   try { 
-    //     //const nb = convertMarkdownToIpynb(text);
-    //       // Initialize StataMarkdown
-    //       const statamd = new StataMarkdown();
-    //       await statamd.onLoad();
-    //       // Find Stata executable
-    //       const stataPath = await find_stata(true);      
-    //       vscode.window.showInformationMessage(`Found Stata at: ${stataPath}`);
-    //     // const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
-    //     // fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
-    //     // vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
-    //   } catch (err: any) {
-    //     vscode.window.showErrorMessage('Conversion failed: ' + (err.message || String(err)));
-    //   }
-    // });
-    // context.subscriptions.push(disposable3);
+    const disposable3 = vscode.commands.registerCommand('extension.hugotest', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('Open a Markdown or R Markdown file first.');
+            return;
+        }
+        const doc = editor.document;
+        const text = doc.getText();
+        const ext = path.extname(doc.fileName).toLowerCase();
+        if (!['.md', '.rmd', '.rmarkdown'].includes(ext)) {
+            vscode.window.showWarningMessage('File does not have a .md or .rmd extension, attempting conversion anyway.');
+        }
+        try {
+            //const nb = convertMarkdownToIpynb(text);
+            // Initialize StataMarkdown
+            const statamd = new StataMarkdown();
+            await statamd.onLoad();
+            // Find Stata executable
+            const stataPath = await find_stata(true);
+            vscode.window.showInformationMessage(`Found Stata at: ${stataPath}`);
+            // const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
+            // fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
+            // vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
+        }
+        catch (err) {
+            vscode.window.showErrorMessage('Conversion failed: ' + (err.message || String(err)));
+        }
+    });
+    context.subscriptions.push(disposable3);
 }
 exports.activate = activate;
 function deactivate() { }
