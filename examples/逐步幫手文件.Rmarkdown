@@ -1,0 +1,64 @@
+---
+title: 逐步幫手文件
+description: 逐步幫手文件
+tags: []
+categories: []
+series: []
+editext: Rmarkdown
+---
+<!--more-->
+<!--more-->
+
+
+```{r setup, echo=FALSE, message=FALSE,results="hide"}
+library(Statamarkdown)
+knitr::opts_chunk$set(cleanlog = F)
+```
+```{stata, collectcode=T, echo=FALSE, message=FALSE,results="hide"}
+adopath + ".."
+adopath + "../utils/"
+set linesize 255
+```
+
+
+## 紀錄
+```{stata,echo=F,block.pre.class="ms-5.w-75"}
+use "https://rmilab.nkust.edu.tw/files/bookdata/lecture/chen_ex_10_2.dta", clear
+sw regress y x1 x2 x3 x4,pr(0.05)
+
+```
+
+```{stata,echo=F,block.pre.class="ms-5.w-75"}
+use "https://rmilab.nkust.edu.tw/files/bookdata/lecture/chen_ex_10_2.dta", clear
+sw reg y x1-x4 , pe(0.99) pr(0.999) forward
+reg y x1
+reg y x2
+reg y x3
+reg y x4
+//x2 被選,因為F最大(紅字)
+reg y x2 x1
+reg y x2 x3
+reg y x2 x4
+// adding x4 (F最大，見紅圈）
+// 然後對目前的兩個變數(x2,x4)塞選,兩個變數的p值,不用被移出因為沒有大於0.999
+reg y x2 x4 x1
+ 
+
+```
+
+
+## to improve
+```stata
+clear all
+//方案1
+matrix C =( 1,	-0.0136,	0.031,	0.0377,	0.6454 \ -0.0136,	1,	0.0025,	0.0018,	0.4273 \0.031,	0.0025,	1,	0.02,	-0.1768 \ 0.0377,	0.0018,	0.02,	1,	0.0083 \ 0.6454,	0.4273,	-0.1768,	0.0083,	1)
+
+matrix list C
+corr2data x1 x2 x3 x4 y, means(0 0 0 0 4) corr(C) n(1000) seed(17)
+
+//方案2
+//gen y=2+1.2*x1 +0.8*x2 -0.4*x3 -0.3*x1*x2 +rnormal()
+
+sw regress y x1 x2 x3 x4, pe(0.99) pr(0.999) forward
+//sw regress y x1 x2 x3 x4, pe(0.05) pr(0.055) forward
+```

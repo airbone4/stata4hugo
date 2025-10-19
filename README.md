@@ -1,6 +1,6 @@
-# rmd-to-ipynb
+# 目的
+寫一個vscode extension 用途是 轉 rmarkdown/makdown to Jupyter Notebook (.ipynb).
 
-VS Code extension (TypeScript) to convert R Markdown / Markdown files to Jupyter Notebook (.ipynb).
 
 Usage:
 - Open a `.md` or `.Rmd` file in VS Code.

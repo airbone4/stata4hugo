@@ -21,7 +21,8 @@ export function activate(context: vscode.ExtensionContext) {
 
     try { 
       const nb = convertMarkdownToIpynb(text);
-      const outPath = doc.fileName.replace(/\.r?md$/i, '') + '.ipynb';
+      
+      const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
       fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
       vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
     } catch (err: any) {
@@ -43,7 +44,8 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showWarningMessage('File is not an .ipynb file, attempting conversion anyway.');
     }
     try {
-      const text = doc.getText();
+      // Read raw file content from disk, not from the VS Code buffer
+      const text = fs.readFileSync(doc.fileName, 'utf8');
       const nb = JSON.parse(text);
       const md = convertIpynbToMarkdown(nb);
       const outPath = doc.fileName.replace(/\.ipynb$/i, '') + '.md';
