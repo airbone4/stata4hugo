@@ -20,7 +20,7 @@
       {
         "command": "extension.convertIpynbToMd",
         "title": "Hugo tool: Jupyter notebook (.ipynb) to Markdown (.md)"
-      }
+      } 
     ]
   },
   "scripts": {
