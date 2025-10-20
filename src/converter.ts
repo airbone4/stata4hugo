@@ -3,7 +3,8 @@ import remarkParse from 'remark-parse';
 import { Root, Content, Paragraph, Heading, Code, Literal } from 'mdast';
 //note2 +1
 const {doStata} = require('./statatool/dostata');
-
+//note4: +1
+const { stata_collectcode } = require('./stata_collectcode');
 
 function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: 'gfm' | 'pandoc' }): string {
   // Simple serializer for common block nodes to markdown source
@@ -123,7 +124,8 @@ export async function convertMarkdownToIpynb(text: string, workdir?:string, opts
     });
     pendingMarkdown = []; 
   }
-
+  //note4
+  const dotask = await stata_collectcode();
   for (const node of tree.children) {
     if (node.type === 'code') {
       const c = node as Code;
@@ -179,7 +181,7 @@ export async function convertMarkdownToIpynb(text: string, workdir?:string, opts
 
 
       if ((lang || '').toLowerCase() === 'stata') {
-        const rst=await doStata(codeSource,workdir,metadata);
+        const rst=await doStata(codeSource,workdir,metadata,dotask);
         //原來的程式碼
         let rstnode: Object={};
         if (metadata.echo!==false){

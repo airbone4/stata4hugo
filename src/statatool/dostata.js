@@ -1,11 +1,12 @@
 const knitr = require('./knitr');
 const { find_stata } = require('./find_stata');
 //const { StataMarkdown } = require('./misc');
-const { stata_collectcode } = require('./stata_collectcode');
+//note4: -1
+//const { stata_collectcode } = require('./stata_collectcode');
 const { stata_engine } = require('./stata_engine');
 const { stataoutput } = require('./stataoutputhook');
 
-async function doStata(stataCode,workdir,metadata) {
+async function doStata(stataCode,workdir,metadata,dotask) {
     try {
         // Initialize StataMarkdown
         //const statamd = new StataMarkdown();
@@ -38,8 +39,8 @@ async function doStata(stataCode,workdir,metadata) {
 
 
         // Set default chunk options
-
-        const dotask = await stata_collectcode();
+        //note4:-1
+        //const dotask = await stata_collectcode();
         await dotask(false, knitr.opts_chunk);
         // Store original output hook and set new one
         //note1: -2
