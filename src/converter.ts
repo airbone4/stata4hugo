@@ -10,7 +10,7 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
   // Simple serializer for common block nodes to markdown source
   switch (node.type) {
     case 'paragraph':
-      return (node as Paragraph).children.map(c => (c as any).value || '').join('') + '\n\n';
+      return (node as Paragraph).children.map(c => nodeToMarkdown(c, depth, opts)).join('') + '\n\n';
     case 'heading':
       const h = node as Heading;
       return '#'.repeat(h.depth) + ' ' + h.children.map(c => (c as any).value || '').join('') + '\n\n';
@@ -78,6 +78,20 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
     case 'code':
       const c = node as Code;
       return '```' + (c.lang || '') + '\n' + (c.value || '') + '\n```\n\n';
+    case 'link':
+      const link = node as any;
+      const linkText = link.children?.map((c: any) => nodeToMarkdown(c, depth, opts)).join(' ').replace(/\s+/g, ' ').trim() || link.title || '';
+      return `[${linkText}](${link.url})`;
+    case 'image':
+      const img = node as any;
+      const alt = img.alt || img.title || '';
+      return `![${alt}](${img.url})`;
+    case 'text':
+      return (node as any).value || '';
+    case 'emphasis':
+      return '*' + ((node as any).children || []).map((c: any) => nodeToMarkdown(c, depth, opts)).join('') + '*';
+    case 'strong':
+      return '**' + ((node as any).children || []).map((c: any) => nodeToMarkdown(c, depth, opts)).join('') + '**';
     default:
       // try to stringify known literals
       if ((node as any).value) return ((node as any).value as string) + '\n\n';
