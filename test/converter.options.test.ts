@@ -2,9 +2,9 @@ import { convertMarkdownToIpynb } from '../src/converter';
 import { strict as assert } from 'assert';
 
 describe('converter options', () => {
-  it('parses R chunk options into metadata', () => {
+  it('parses R chunk options into metadata', async () => {
     const md = "```{r, echo=FALSE, fig.height=4, label='plot1'}\n1+1\n```\n";
-    const nb = convertMarkdownToIpynb(md);
+    const nb = await convertMarkdownToIpynb(md);
     assert.equal(nb.cells.length, 1);
     const cell = nb.cells[0];
     assert.equal(cell.cell_type, 'code');

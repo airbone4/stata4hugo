@@ -86,9 +86,10 @@ export async function activate(context: vscode.ExtensionContext) {
         
         const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
         const workdir=path.dirname(outPath);
+        
+        //note3+1
+        process.chdir(workdir)
         const nb = await convertMarkdownToIpynb(text,workdir);
-
-    
        fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
        vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
     } catch (err: any) {

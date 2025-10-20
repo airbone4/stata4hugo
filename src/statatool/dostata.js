@@ -5,7 +5,7 @@ const { stata_collectcode } = require('./stata_collectcode');
 const { stata_engine } = require('./stata_engine');
 const { stataoutput } = require('./stataoutputhook');
 
-async function doStata(stataCode,workdir) {
+async function doStata(stataCode,workdir,metadata) {
     try {
         // Initialize StataMarkdown
         //const statamd = new StataMarkdown();
@@ -23,11 +23,14 @@ async function doStata(stataCode,workdir) {
         }        
 
         knitr.opts_chunk.code=stataCode.split("\n");
-        knitr.opts_chunk.savedo=true;
+        knitr.opts_chunk.savedo=true;  //執行的站存檔要不要留著
         knitr.opts_chunk.error= true;
         knitr.opts_chunk.cleanlog= false;
         knitr.opts_chunk.comment= null;
         knitr.opts_chunk.workdir= workdir;
+
+        //note3
+        knitr.opts_chunk.collectcode=metadata.collectcode
         
 
 

@@ -14,6 +14,8 @@ const access = promisify(fs.access);
  * @param {string} filePath - Path to the file
  * @returns {Promise<boolean>} - Whether the file exists
  */
+
+
 async function fileExists(filePath) {
     try {
         await access(filePath);
@@ -44,6 +46,7 @@ async function stata_collectcode() {
 
     // Store original profile if it exists
     let originalProfile = null;
+    
     if (await fileExists('profile.do')) {
         originalProfile = await readFile('profile.do', 'utf8');
         console.log("Found an existing 'profile.do'");
@@ -61,15 +64,18 @@ async function stata_collectcode() {
             
             if (options.engine === 'stata') {
             
-                // Check for profile.do in Stata directory
+                // Check for profile.do in Stata directory                
                 if (fs.existsSync(path.join(path.dirname(options.engine_path.stata), 'profile.do'))) {
+                
                     console.log("Found a 'profile.do' in the STATA executable directory.");
                     console.log("  This prevents 'collectcode' from working properly.");
                     console.log("  Please rename this 'sysprofile.do'.");
                 }
 
                 // Append code to profile.do
-                return appendFile(path.join(options.workdir, 'profile.do'), options.code.join('\n') + '\n')
+                //note3: -1 +1
+                //return appendFile(path.join(options.workdir, 'profile.do'), options.code.join('\n') + '\n')
+                return appendFile(path.join(options.workdir, 'profile.do'), (options.collectcode)? options.code.join('\n') + '\n':'\n')
                     .then(() => {
                         // Set up cleanup handlers 
                         process.on('exit', async () => {

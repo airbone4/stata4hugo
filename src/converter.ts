@@ -5,7 +5,7 @@ import { Root, Content, Paragraph, Heading, Code, Literal } from 'mdast';
 const {doStata} = require('./statatool/dostata');
 
 
-function nodeToMarkdown(node: Content): string {
+function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: 'gfm' | 'pandoc' }): string {
   // Simple serializer for common block nodes to markdown source
   switch (node.type) {
     case 'paragraph':
@@ -15,9 +15,46 @@ function nodeToMarkdown(node: Content): string {
       return '#'.repeat(h.depth) + ' ' + h.children.map(c => (c as any).value || '').join('') + '\n\n';
     case 'list':
       // Render list items by converting their child nodes instead of naively stringifying values.
-      return (node as any).children.map((item: any) => {
+      const listNode: any = node as any;
+      const ordered = !!listNode.ordered;
+      const startIndex = Number(listNode.start) || 1;
+  let maxIndex = startIndex + (listNode.children ? listNode.children.length - 1 : 0);
+  const style = (opts && opts.listStyle) || 'gfm';
+      // If pandoc style and source text provided, attempt to parse explicit numbers in the source to compute padding
+      let explicitNumbers: number[] | undefined;
+      if (style === 'pandoc' && opts && (opts as any).sourceText) {
+        try {
+          const src: string = (opts as any).sourceText || '';
+          // find lines with optional indentation followed by digits and a dot, capture digits in order
+          const lines = src.split(/\r?\n/);
+          const found: number[] = [];
+          for (const ln of lines) {
+            const m = ln.match(/^\s*(\d+)\./);
+            if (m) {
+              const n = Number(m[1]);
+              if (!Number.isNaN(n)) found.push(n);
+            }
+          }
+          if (found.length > 0) explicitNumbers = found;
+          if (explicitNumbers && explicitNumbers.length > 0) {
+            const maxFound = Math.max(...explicitNumbers, maxIndex);
+            maxIndex = maxFound;
+          }
+        } catch (e) {
+          // ignore and fall back
+        }
+      }
+  const numWidth = ordered ? String(maxIndex).length : 0;
+  const indent = '   '.repeat(depth);
+
+      return (listNode.children || []).map((item: any, idx: number) => {
         const children = item.children || [];
-        if (children.length === 0) return ' - ';
+        const seqNum = startIndex + idx;
+        const itemNum = (explicitNumbers && explicitNumbers[idx] !== undefined) ? explicitNumbers[idx] : seqNum;
+        const prefix = ordered
+          ? (style === 'pandoc' ? itemNum.toString().padStart(numWidth, ' ') + '. ' : itemNum.toString() + '. ')
+          : '- ';
+        if (children.length === 0) return indent + prefix.trim();
 
         // Render first child inline when possible (e.g., paragraph)
         const first = children[0];
@@ -25,16 +62,17 @@ function nodeToMarkdown(node: Content): string {
         if (first.type === 'paragraph') {
           firstText = (first.children || []).map((c: any) => (c.value || '')).join('');
         } else {
-          firstText = nodeToMarkdown(first).replace(/\n+/g, ' ').trim();
+          firstText = nodeToMarkdown(first, depth + 1).replace(/\n+/g, ' ').trim();
         }
 
         // Render remaining block children as indented blocks (preserve multi-line output)
-        const rest = (children.slice(1) || []).map((c: any) => nodeToMarkdown(c)).join('');
+        const rest = (children.slice(1) || []).map((c: any) => nodeToMarkdown(c, depth + 1, opts)).join('');
+        const spacer = ordered ? (style === 'pandoc' ? ' '.repeat(numWidth + 2) : '  ') : '   ';
         const indentedRest = rest
-          ? rest.split('\n').map((l: string) => (l ? '   ' + l : l)).join('\n')
+          ? rest.split('\n').map((l: string) => (l ? indent + spacer + l : l)).join('\n')
           : '';
 
-        return ' - ' + firstText + (indentedRest ? '\n' + indentedRest : '');
+        return indent + prefix + firstText + (indentedRest ? '\n' + indentedRest : '');
       }).join('\n') + '\n\n';
     case 'code':
       const c = node as Code;
@@ -46,7 +84,7 @@ function nodeToMarkdown(node: Content): string {
   }
 }
 
-export async function convertMarkdownToIpynb(text: string, workdir?:string): Promise<any> {
+export async function convertMarkdownToIpynb(text: string, workdir?:string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)
   let yamlFront = '';
   let restText = text;
@@ -141,7 +179,7 @@ export async function convertMarkdownToIpynb(text: string, workdir?:string): Pro
 
 
       if ((lang || '').toLowerCase() === 'stata') {
-        const rst=await doStata(codeSource,workdir);
+        const rst=await doStata(codeSource,workdir,metadata);
         //原來的程式碼
         let rstnode: Object={};
         if (metadata.echo!==false){
@@ -166,7 +204,8 @@ export async function convertMarkdownToIpynb(text: string, workdir?:string): Pro
 
 
     } else {
-      const md = nodeToMarkdown(node as Content);
+  // provide the original restText as sourceText so list rendering can inspect marker numbers for pandoc style
+  const md = nodeToMarkdown(node as Content, 0, Object.assign({}, opts, { sourceText: restText }));
       if (md.trim().length === 0) continue;
       pendingMarkdown.push(md);
     }

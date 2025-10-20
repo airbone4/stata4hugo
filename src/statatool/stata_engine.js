@@ -53,7 +53,7 @@ async function stata_engine(options) {
     }
     */
     // Write code to file
-    dofile=path.join(options.workdir, doFile);
+    doFile=path.join(options.workdir, doFile);
     logFile=path.join(options.workdir, logFile);
     await writeFile(doFile, processedCode.join('\n'), { encoding: 'utf8' });
 
@@ -74,7 +74,7 @@ async function stata_engine(options) {
     
     //note1: -1, +1
     //const doFilePath = path.normalize(doFile);
-    const doFilePath = path.normalize(path.join(process.cwd(), doFile) );
+    const doFilePath = doFile
     
     let command = `${cmdArgs} "${doFilePath}"`;
     
