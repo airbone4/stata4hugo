@@ -3,13 +3,11 @@ import { convertMarkdownToIpynb } from './converter';
 import { convertIpynbToMarkdown } from './ipynbToMd';
 import * as path from 'path';
 import * as fs from 'fs';
-//const knitr = require('./statatool/knitr');
-// const { find_stata } = require('./statatool/find_stata');
-// const { StataMarkdown } = require('./statatool/misc');
 
-// const { stata_engine } = require('./statatool/stata_engine');
-// const { stataoutput } = require('./statatool/stataoutputhook');
-const {doStata} = require('./statatool/dostata');
+
+const knitr = require('./statatool/knitr');
+const { find_stata } = require('./statatool/find_stata');
+
 
 export async function activate(context: vscode.ExtensionContext) {
   // 指令1: 轉 md/rmd to ipynb, 同時必須在package.json 定義指令
@@ -83,15 +81,57 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     try { 
-        
+        //
         const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
         const workdir=path.dirname(outPath);
         
+/*
+        // Find Stata executable
+        const stataexe = await find_stata();
+        if (stataexe !== "") {
+            knitr.opts_chunk.engine_path={stata: stataexe};
+            knitr.opts_chunk.engine="stata";
+
+            if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
+                console.log("Found a 'sysprofile.do'");
+            }            
+            if (fs.existsSync(path.join(path.dirname(path.dirname(stataexe)), 'profile.do'))) {
+            
+                console.log("Found a 'profile.do' in the STATA executable directory.");
+                console.log("  This prevents 'collectcode' from working properly.");
+                console.log("  Please rename this 'sysprofile.do'.");
+            }            
+        } else {
+            console.log("No Stata executable found.");
+        }        
         //note3+1
-        process.chdir(workdir)
+        process.chdir(workdir)        
+        //note5
+        let originalProfile=''
+        if ( fs.existsSync('profile.do')) {
+            originalProfile =  fs.readFileSync('profile.do', 'utf8');
+            console.log("Found an existing 'profile.do'");
+            console.log("  ", originalProfile);
+        }        
+
+
         const nb = await convertMarkdownToIpynb(text,workdir);
+        await fs.unlink('profile.do', 
+                        (err) => {
+                          if (err) throw err;
+                          console.log('profile.do was deleted')});
+          if (originalProfile) {
+              await fs.writeFile('profile.do', originalProfile,err => {
+                  if (err) {
+                    console.error('Error writing profile.do:', err);
+                  } else {
+                    console.log('File written successfully!');
+                  }
+                });
+          }        
        fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
        vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
+       */
     } catch (err: any) {
       vscode.window.showErrorMessage('Conversion failed: ' + (err.message || String(err)));
     }
