@@ -4,7 +4,7 @@ import { Root, Content, Paragraph, Heading, Code, Literal } from 'mdast';
 //note2 +1
 const {doStata} = require('./statatool/dostata');
 //note4: +1
-const { stata_collectcode } = require('./stata_collectcode');
+const { stata_collectcode } = require('./statatool/stata_collectcode');
 
 function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: 'gfm' | 'pandoc' }): string {
   // Simple serializer for common block nodes to markdown source
