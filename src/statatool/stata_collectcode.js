@@ -69,7 +69,7 @@ async function stata_collectcode() {
                 }
 
                 // Append code to profile.do
-                return appendFile('profile.do', options.code.join('\n') + '\n')
+                return appendFile(path.join(options.workdir, 'profile.do'), options.code.join('\n') + '\n')
                     .then(() => {
                         // Set up cleanup handlers 
                         process.on('exit', async () => {

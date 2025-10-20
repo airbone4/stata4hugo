@@ -5,7 +5,7 @@ const { stata_collectcode } = require('./stata_collectcode');
 const { stata_engine } = require('./stata_engine');
 const { stataoutput } = require('./stataoutputhook');
 
-async function doStata(stataCode) {
+async function doStata(stataCode,workdir) {
     try {
         // Initialize StataMarkdown
         //const statamd = new StataMarkdown();
@@ -27,6 +27,7 @@ async function doStata(stataCode) {
         knitr.opts_chunk.error= true;
         knitr.opts_chunk.cleanlog= false;
         knitr.opts_chunk.comment= null;
+        knitr.opts_chunk.workdir= workdir;
         
 
 

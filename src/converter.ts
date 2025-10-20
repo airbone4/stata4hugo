@@ -14,8 +14,28 @@ function nodeToMarkdown(node: Content): string {
       const h = node as Heading;
       return '#'.repeat(h.depth) + ' ' + h.children.map(c => (c as any).value || '').join('') + '\n\n';
     case 'list':
-      // fallback: stringify children
-      return (node as any).children.map((item: any) => ' - ' + (item.children || []).map((c: any) => c.value || '').join('')).join('\n') + '\n\n';
+      // Render list items by converting their child nodes instead of naively stringifying values.
+      return (node as any).children.map((item: any) => {
+        const children = item.children || [];
+        if (children.length === 0) return ' - ';
+
+        // Render first child inline when possible (e.g., paragraph)
+        const first = children[0];
+        let firstText = '';
+        if (first.type === 'paragraph') {
+          firstText = (first.children || []).map((c: any) => (c.value || '')).join('');
+        } else {
+          firstText = nodeToMarkdown(first).replace(/\n+/g, ' ').trim();
+        }
+
+        // Render remaining block children as indented blocks (preserve multi-line output)
+        const rest = (children.slice(1) || []).map((c: any) => nodeToMarkdown(c)).join('');
+        const indentedRest = rest
+          ? rest.split('\n').map((l: string) => (l ? '   ' + l : l)).join('\n')
+          : '';
+
+        return ' - ' + firstText + (indentedRest ? '\n' + indentedRest : '');
+      }).join('\n') + '\n\n';
     case 'code':
       const c = node as Code;
       return '```' + (c.lang || '') + '\n' + (c.value || '') + '\n```\n\n';
@@ -26,7 +46,7 @@ function nodeToMarkdown(node: Content): string {
   }
 }
 
-export async function convertMarkdownToIpynb(text: string) {
+export async function convertMarkdownToIpynb(text: string, workdir?:string): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)
   let yamlFront = '';
   let restText = text;
@@ -88,6 +108,7 @@ export async function convertMarkdownToIpynb(text: string) {
       let info = rawInfo;
       let lang = '';
       let metadata: any = {};
+      
       if (info.length > 0) {
         // remove surrounding braces
         info = info.slice(1, -1).trim();
@@ -117,25 +138,29 @@ export async function convertMarkdownToIpynb(text: string) {
       }
 
       let codeSource = (c.value || '') + '\n';
-      //note2 -1b
-      // if ((lang || '').toLowerCase() === 'stata') {
-      //   // Prepend magic command for stata
-      //   codeSource = '%%stata\n' + codeSource;
-      // }
-      //code block 直接進celss
-      cells.push({
-        cell_type: 'code',
-        execution_count: null,
-        metadata: Object.assign({ language: lang || '' }, metadata),
-        outputs: [],
-        source: codeSource
-      });
-      if ((lang || '').toLowerCase() === 'stata') {
-        const rst=await doStata(codeSource);
 
- 
-        const rstnode={type:'code',value:rst} as Literal;
-        pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
+
+      if ((lang || '').toLowerCase() === 'stata') {
+        const rst=await doStata(codeSource,workdir);
+        //原來的程式碼
+        let rstnode: Object={};
+        if (metadata.echo!==false){
+          rstnode={lang:info,type:'code',value:codeSource} as Literal;
+          pendingMarkdown.push(nodeToMarkdown(rstnode as Content)); 
+        }
+        //執行結果程式碼
+        if(metadata.results!=='hide'){
+          rstnode={lang:'stata',type:'code',value:rst} as Literal;
+          pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
+        }
+      }else {
+        cells.push({
+          cell_type: 'code',
+          execution_count: null,
+          metadata: Object.assign({ language: lang || '' }, metadata),
+          outputs: [],
+          source: codeSource
+        });
       }
 
 

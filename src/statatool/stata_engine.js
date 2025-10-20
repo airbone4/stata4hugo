@@ -27,10 +27,10 @@ function tempfile(pattern, fileext) {
  */
 async function stata_engine(options) {
     // Handle file paths
-    const doFile = options.savedo ? 
+    let doFile = options.savedo ? 
         `${options.label}.do` : 
         tempfile('stata', '.do');
-    const logFile = doFile.replace(/\.do$/, '.log');
+    let logFile = doFile.replace(/\.do$/, '.log');
     
     // Process code based on eval options
     
@@ -53,6 +53,8 @@ async function stata_engine(options) {
     }
     */
     // Write code to file
+    dofile=path.join(options.workdir, doFile);
+    logFile=path.join(options.workdir, logFile);
     await writeFile(doFile, processedCode.join('\n'), { encoding: 'utf8' });
 
     // Build command based on OS
@@ -76,7 +78,7 @@ async function stata_engine(options) {
     
     let command = `${cmdArgs} "${doFilePath}"`;
     
-
+    //todo: 這都不要
     // Add engine options if present
     if (options.engine_opts) {
         const engineOpts = typeof options.engine_opts === 'object' ?

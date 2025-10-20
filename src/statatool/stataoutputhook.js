@@ -14,6 +14,10 @@ function stataoutput(output, options) {
         lines = lines.map(line => {
             return line.replace(/^\.?\s*[Rr]unning\s.*profile\.do/, '');
         });
+        // Remove "end of dofile"
+        lines = lines.map(line => {
+            return line.replace(/^\.?\s*end of do-file/, '');
+        });
 
         // Process command echo in Stata log if cleanlog is not explicitly false
         if (!options.cleanlog === false) {

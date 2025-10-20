@@ -83,9 +83,10 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     try { 
-        const nb = await convertMarkdownToIpynb(text);
-        const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
         
+        const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
+        const workdir=path.dirname(outPath);
+        const nb = await convertMarkdownToIpynb(text,workdir);
 
     
        fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
