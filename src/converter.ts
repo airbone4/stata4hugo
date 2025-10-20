@@ -1,7 +1,7 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { Root, Content, Paragraph, Heading, Code, Literal } from 'mdast';
-//note2 +1
+
 const {doStata} = require('./statatool/dostata');
 //const { stata_collectcode } = require('./statatool/stata_collectcode');
 
