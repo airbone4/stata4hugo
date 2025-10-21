@@ -80,26 +80,29 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showWarningMessage('File does not have a .md or .rmd extension, attempting conversion anyway.');
     }
 
+    let originalProfile=''
     try { 
         //
         const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
         const workdir=path.dirname(outPath);
         
-/*
+ 
         // Find Stata executable
         const stataexe = await find_stata();
         if (stataexe !== "") {
             knitr.opts_chunk.engine_path={stata: stataexe};
             knitr.opts_chunk.engine="stata";
-
+            knitr.opts_chunk.workdir= workdir;
+            
             if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
                 console.log("Found a 'sysprofile.do'");
             }            
             if (fs.existsSync(path.join(path.dirname(path.dirname(stataexe)), 'profile.do'))) {
             
-                console.log("Found a 'profile.do' in the STATA executable directory.");
-                console.log("  This prevents 'collectcode' from working properly.");
-                console.log("  Please rename this 'sysprofile.do'.");
+                const wmsg="Found a 'profile.do' in the STATA executable directory.\n"+
+                "  This prevents 'collectcode' from working properly.\n"+
+                "  Please rename this 'sysprofile.do'."
+                vscode.window.showWarningMessage(wmsg)
             }            
         } else {
             console.log("No Stata executable found.");
@@ -107,15 +110,26 @@ export async function activate(context: vscode.ExtensionContext) {
         //note3+1
         process.chdir(workdir)        
         //note5
-        let originalProfile=''
+        
         if ( fs.existsSync('profile.do')) {
             originalProfile =  fs.readFileSync('profile.do', 'utf8');
-            console.log("Found an existing 'profile.do'");
-            console.log("  ", originalProfile);
+            vscode.window.showWarningMessage(`Found an existing 'profile.do'\n${originalProfile}`);
+            
         }        
 
 
         const nb = await convertMarkdownToIpynb(text,workdir);
+
+
+    
+       fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
+       vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
+       
+    } catch (err: any) {
+      vscode.window.showErrorMessage('Conversion failed: ' + (err.message || String(err)));
+    } finally {
+
+
         await fs.unlink('profile.do', 
                         (err) => {
                           if (err) throw err;
@@ -128,12 +142,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     console.log('File written successfully!');
                   }
                 });
-          }        
-       fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
-       vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
-       */
-    } catch (err: any) {
-      vscode.window.showErrorMessage('Conversion failed: ' + (err.message || String(err)));
+          }    
     }
   });
 

@@ -35,23 +35,7 @@ async function stata_engine(options) {
     // Process code based on eval options
     
     let processedCode = options.code;
-    //note1: -1b 這裡在處理options每個項目的item
-    /*
-    if (typeof options.eval === 'object' && options.eval !== null) {
-        if (options.eval.every(n => n < 0)) {
-            processedCode = options.code.map((line, i) => 
-                options.eval.includes(-i) ? `* ${line}` : line
-            );
-        } else if (options.eval.every(n => n > 0)) {
-            processedCode = options.code.map((line, i) => 
-                options.eval.includes(i + 1) ? line : `* ${line}`
-            );
-        } else {
-            console.log("eval option must be all negative or positive");
-            processedCode = options.code;
-        }
-    }
-    */
+
     // Write code to file
     doFile=path.join(options.workdir, doFile);
     logFile=path.join(options.workdir, logFile);
