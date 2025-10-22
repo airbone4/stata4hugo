@@ -16,8 +16,9 @@ async function doStata(stataCode,workdir,metadata) {
         //savedo: 執行的暫存檔要不要留著,如果要留要給個label否則就是undefiend.do
         knitr.opts_chunk.savedo=metadata.savedo?metadata.savedo:false;  
         knitr.opts_chunk.error= metadata.error?metadata.error:false;
-        knitr.opts_chunk.cleanlog= metadata.cleanlog?metadata.cleanlog:true;
-        knitr.opts_chunk.comment= null;
+        //指令碼要不要留在結果中,和log file 無關
+        knitr.opts_chunk.cleanlog= metadata.cleanlog?metadata.cleanlog:false;
+        knitr.opts_chunk.comment= metadata.comment?metadata.comment:false;
         knitr.opts_chunk.collectcode=metadata.collectcode
         
 

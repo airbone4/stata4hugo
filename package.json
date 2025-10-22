@@ -1,5 +1,5 @@
 {
-  "name": "rmd-to-ipynb",
+  "name": "hugo-helper",
   "displayName": "linchao's huto tool",
   "publisher": "linchao",
   "version": "0.0.1",
@@ -14,18 +14,30 @@
   "contributes": {
     "commands": [
       {
-        "command": "extension.convertToIpynb",
-        "title": "Hugo tool: R/Markdown to Jupyter Notebook (.ipynb)"
+        "command": "extension.rmd2ipynb",
+        "title": "Hugo tool: R/Markdown to Notebook (.ipynb)"
       },
       {
-        "command": "extension.convertIpynbToMd",
-        "title": "Hugo tool: Jupyter notebook (.ipynb) to Markdown (.md)"
+        "command": "extension.ipynb2md",
+        "title": "Hugo tool: Notebook (.ipynb) to Markdown (.md)"
       },
       {
-        "command": "extension.hugotest",
-        "title": "Hugo tool: 測試"
+        "command": "extension.rmd2md",
+        "title": "Hugo tool: RMarkdown to markdown"
       }  
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "resourceExtname == .ipynb",
+          "command": "extension.ipynb2md"
+        },
+        {
+          "when": "resourceExtname == .Rmarkdown || resourceExtname == .rmarkdown || resourceExtname == .rmd || resourceExtname == .Rmd",
+          "command": "extension.rmd2md"
+        }        
+      ]
+    }    
   },
   "scripts": {
     "build": "tsc -p .",
