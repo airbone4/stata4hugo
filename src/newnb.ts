@@ -92,6 +92,4 @@ const date = `${year}/${month}/${day}`;
   
   
 }  
-const __dirname = import.meta.dirname; 
-let workdir=path.resolve(__dirname,'../examples')
-newnb(workdir,'test2_out.ipynb');
+ 

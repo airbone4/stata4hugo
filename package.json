@@ -33,7 +33,11 @@
       {
         "command": "extension.rmd2md",
         "title": "Hugo tool: RMarkdown to markdown"
-      }
+      },
+      {
+        "command": "extension.newnb",
+        "title": "Hugo tool: create my stata ipynb"
+      }      
     ],
     "keybindings": [
       {
