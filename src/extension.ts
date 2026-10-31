@@ -3,6 +3,7 @@ import { convertMarkdownToIpynb } from './converter';
 import { convertIpynbToMarkdown } from './ipynbToMd';
 import * as path from 'path';
 import * as fs from 'fs';
+//import { nullCoalesce } from './statatool/utils';
 const { promisify } = require('util');
 const knitr = require('./statatool/knitr');
 const { find_stata } = require('./statatool/find_stata');
@@ -194,6 +195,46 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   context.subscriptions.push(disposable3);
+
+  let previousTerminal: vscode.Terminal | null = null;
+	context.subscriptions.push(
+		vscode.commands.registerCommand('extension.ipynb2md_shell', (uri) => {
+   const editor = vscode.window.activeTextEditor;
+    const activeNotebookEditor = vscode.window.activeNotebookEditor;
+
+    let doc: any = ''
+    if (editor)
+      doc = editor.document.fileName;
+    else
+      doc = uri ? uri.fsPath : activeNotebookEditor?.notebook.uri.fsPath;
+
+
+			let cwd = path.dirname(doc);
+
+			let fileName = path.basename(doc);
+			const terminal = vscode.window.createTerminal({ cwd: cwd });
+			terminal.show();
+
+			if (previousTerminal) {
+				previousTerminal.dispose();
+				previousTerminal = null;
+			}
+			previousTerminal = terminal;    
+      
+      vscode.commands.executeCommand('python.interpreterPath', { workspaceFolder: "${cwd}"	 })
+    .then(interpreterPath => {
+        if (interpreterPath) {
+            //console.log('Selected Python interpreter path:', interpreterPath);
+            // Further actions based on the interpreter path
+            const noextname:string = path.basename(doc).replace(/\.ipynb$/i,"")
+            terminal.sendText(`${interpreterPath} -m jupyter nbconvert ${path.basename(doc)} --to markdown --NbConvertApp.output_files_dir="${noextname}.files" --TagRemovePreprocessor.remove_cell_tags="{'hide'}`)
+        } else {
+            console.log('No Python interpreter selected.');
+        }
+    });
+		})
+	);
+
 
 }
 

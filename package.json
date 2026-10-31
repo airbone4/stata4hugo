@@ -4,15 +4,19 @@
   "publisher": "linchao",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.60.0"
+    "vscode": "^1.105.0"
   },
   "categories": [
     "Other"
   ],
+ "repository": {
+    "type": "git",
+    "url": "https://github.com/airbone4/hugo-helper"
+ },  
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
+    "commands": [ 
       {
         "command": "extension.rmd2ipynb",
         "title": "Hugo tool: R/Markdown to Notebook (.ipynb)"
@@ -22,15 +26,25 @@
         "title": "Hugo tool: Notebook (.ipynb) to Markdown (.md)"
       },
       {
+        "command": "extension.ipynb2md_shell",
+        "title": "Hugo tool: using jupyter (.ipynb) to (.md)"
+      },            
+      {
         "command": "extension.rmd2md",
         "title": "Hugo tool: RMarkdown to markdown"
       }  
     ],
+    "keybindings": [{
+      "command": "extension.ipynb2md_shell",
+      "key": "ctrl+m",
+      "mac": "cmd+m",
+      "when": "editorTextFocus"
+    }] ,   
     "menus": {
       "explorer/context": [
         {
           "when": "resourceExtname == .ipynb",
-          "command": "extension.ipynb2md"
+          "command": "extension.ipynb2md_shell"
         },
         {
           "when": "resourceExtname == .Rmarkdown || resourceExtname == .rmarkdown || resourceExtname == .rmd || resourceExtname == .Rmd",
