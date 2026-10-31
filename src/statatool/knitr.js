@@ -24,24 +24,22 @@ const knit_hooks_api = {
     get: (name) => knit_hooks.get(name)
 };
 
-function engine_output(options, code, out) {
+export function engine_output(options, code, out) {
     return { options, code, out };
 }
-
-module.exports = {
-    knit_engines,
-    opts_chunk: opts_chunk_api,
-    knit_hooks: knit_hooks_api,
-    engine_output
-};
 */
 
 const knit_engines = {};
 const opts_chunk = {};
 const knit_hooks = {};
+
 function engine_output(options, code, out) {
     return { options, code, out };
 }
-module.exports = {
-    knit_engines,    opts_chunk,  knit_hooks,  engine_output
+
+export {
+    knit_engines,
+    opts_chunk,
+    knit_hooks,
+    engine_output
 };

@@ -1,10 +1,18 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es2017",
-    "lib": ["es2017"],
+    //"module": "Node16",
+    "target": "ES2022",  
+    "module": "NodeNext",     // 讓 TS 自動完美適應 Node.js 的模組機制
+    "moduleResolution": "NodeNext",    
     "outDir": "out",
-    "rootDir": "src",
+    //"rootDir": "src",    
+    "lib": [
+        "ES2022"
+    ],
+    "types": [
+        "node",
+        "mocha"
+    ],    
     "sourceMap": true,
     "strict": false,
     "allowJs": true,
@@ -13,6 +21,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", ".vscode-test", "out", "examples"]
+  "include": ["src","test"],
+  "exclude": [ ]
 }

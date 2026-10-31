@@ -19,3 +19,9 @@
 - ipynb to markdown
   - windows: `ctrl+m` 
   - mac: `cmd+m`
+
+## debug
+在debug terminal中,敲入
+```
+npm run test1
+```

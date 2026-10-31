@@ -4,7 +4,7 @@
  * @param {Object} options - Configuration options
  * @returns {string[]} - Processed output
  */
-function stataoutput(output, options) {
+export function stataoutput(output, options) {
     console.log(`\n${options.engine} output from chunk ${options.label}`);
 
     if (options.engine === 'stata') {
@@ -50,6 +50,3 @@ function stataoutput(output, options) {
     // For non-Stata output, return as is
     return Array.isArray(output) ? output : output.split('\n');
 }
-
-// Export the hook function
-module.exports = { stataoutput };

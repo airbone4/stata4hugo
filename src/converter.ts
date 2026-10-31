@@ -2,8 +2,7 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { Root, Content, Paragraph, Heading, Code, Literal } from 'mdast';
 
-const {doStata} = require('./statatool/dostata');
-//const { stata_collectcode } = require('./statatool/stata_collectcode');
+import { doStata } from './statatool/dostata.js'
 
 function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: 'gfm' | 'pandoc' }): string {
   // Simple serializer for common block nodes to markdown source
@@ -18,8 +17,8 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
       const listNode: any = node as any;
       const ordered = !!listNode.ordered;
       const startIndex = Number(listNode.start) || 1;
-  let maxIndex = startIndex + (listNode.children ? listNode.children.length - 1 : 0);
-  const style = (opts && opts.listStyle) || 'gfm';
+      let maxIndex = startIndex + (listNode.children ? listNode.children.length - 1 : 0);
+      const style = (opts && opts.listStyle) || 'gfm';
       // If pandoc style and source text provided, attempt to parse explicit numbers in the source to compute padding
       let explicitNumbers: number[] | undefined;
       if (style === 'pandoc' && opts && (opts as any).sourceText) {
@@ -44,8 +43,8 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
           // ignore and fall back
         }
       }
-  const numWidth = ordered ? String(maxIndex).length : 0;
-  const indent = '   '.repeat(depth);
+      const numWidth = ordered ? String(maxIndex).length : 0;
+      const indent = '   '.repeat(depth);
 
       return (listNode.children || []).map((item: any, idx: number) => {
         const children = item.children || [];
@@ -98,7 +97,7 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
   }
 }
 
-export async function convertMarkdownToIpynb(text: string, workdir?:string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
+export async function convertMarkdownToIpynb(text: string, workdir?: string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)
   let yamlFront = '';
   let restText = text;
@@ -128,17 +127,19 @@ export async function convertMarkdownToIpynb(text: string, workdir?:string, opts
   // We'll iterate and group consecutive non-code nodes into one markdown cell.
   let pendingMarkdown: string[] = [];
 
-  function flushMarkdown() {
+  async function flushMarkdown() {
+
     if (pendingMarkdown.length === 0) return;
     cells.push({
       cell_type: 'markdown',
       metadata: {},
       source: pendingMarkdown.join('')
     });
-    pendingMarkdown = []; 
+    pendingMarkdown = [];
   }
   //note4 +1
   //note5 -1
+
   //const dotask = await stata_collectcode();
   for (const node of tree.children) {
     if (node.type === 'code') {
@@ -162,7 +163,7 @@ export async function convertMarkdownToIpynb(text: string, workdir?:string, opts
       let info = rawInfo;
       let lang = '';
       let metadata: any = {};
-      
+
       if (info.length > 0) {
         // remove surrounding braces
         info = info.slice(1, -1).trim();
@@ -195,19 +196,19 @@ export async function convertMarkdownToIpynb(text: string, workdir?:string, opts
 
 
       if ((lang || '').toLowerCase() === 'stata') {
-        const rst=await doStata(codeSource,workdir,metadata);
+        const rst = await doStata(codeSource, workdir, metadata);
         //原來的程式碼
-        let rstnode: Object={};
-        if (metadata.echo!==false){
-          rstnode={lang:info,type:'code',value:codeSource} as Literal;
-          pendingMarkdown.push(nodeToMarkdown(rstnode as Content)); 
-        }
-        //執行結果程式碼
-        if(metadata.results!=='hide'){
-          rstnode={lang:'stata',type:'code',value:rst} as Literal;
+        let rstnode: Object = {};
+        if (metadata.echo !== false) {
+          rstnode = { lang: info, type: 'code', value: codeSource } as Literal;
           pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
         }
-      }else {
+        //執行結果程式碼
+        if (metadata.results !== 'hide') {
+          rstnode = { lang: 'stata', type: 'code', value: rst } as Literal;
+          pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
+        }
+      } else {
         cells.push({
           cell_type: 'code',
           execution_count: null,
@@ -220,26 +221,26 @@ export async function convertMarkdownToIpynb(text: string, workdir?:string, opts
 
 
     } else {
-  // provide the original restText as sourceText so list rendering can inspect marker numbers for pandoc style
-  const md = nodeToMarkdown(node as Content, 0, Object.assign({}, opts, { sourceText: restText }));
+      // provide the original restText as sourceText so list rendering can inspect marker numbers for pandoc style
+      const md = nodeToMarkdown(node as Content, 0, Object.assign({}, opts, { sourceText: restText }));
       if (md.trim().length === 0) continue;
       pendingMarkdown.push(md);
     }
   }
 
-function parseOptionValue(v: string): any {
-  if (!v) return v;
-  const low = v.toLowerCase();
-  if (low === 'true') return true;
-  if (low === 'false') return false;
-  // number?
-  const n = Number(v);
-  if (!Number.isNaN(n)) return n;
-  // strip quotes if present
-  const m = v.match(/^['"](.*)['"]$/);
-  if (m) return m[1];
-  return v;
-}
+  function parseOptionValue(v: string): any {
+    if (!v) return v;
+    const low = v.toLowerCase();
+    if (low === 'true') return true;
+    if (low === 'false') return false;
+    // number?
+    const n = Number(v);
+    if (!Number.isNaN(n)) return n;
+    // strip quotes if present
+    const m = v.match(/^['"](.*)['"]$/);
+    if (m) return m[1];
+    return v;
+  }
   flushMarkdown();
 
   return {

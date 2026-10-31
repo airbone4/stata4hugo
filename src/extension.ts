@@ -1,16 +1,22 @@
 import * as vscode from 'vscode';
-import { convertMarkdownToIpynb } from './converter';
-import { convertIpynbToMarkdown } from './ipynbToMd';
+import { convertMarkdownToIpynb } from './converter.js';
+import { convertIpynbToMarkdown } from './ipynbToMd.js';
 import * as path from 'path';
 import * as fs from 'fs';
-//import { nullCoalesce } from './statatool/utils';
-const { promisify } = require('util');
-const knitr = require('./statatool/knitr');
-const { find_stata } = require('./statatool/find_stata');
 
-const writeFile = promisify(fs.writeFile);
-const appendFile = promisify(fs.appendFile);
-const unlink = promisify(fs.unlink);
+
+
+import * as knitr from './statatool/knitr.js';
+import { find_stata } from './statatool/find_stata.js';
+
+ 
+
+function removeExtension(filename:string) {
+  return (
+    filename.substring(0, filename.lastIndexOf('.')) || filename
+  );
+}
+
 
 export async function activate(context: vscode.ExtensionContext) {
   // 指令1: 轉 md/rmd to ipynb, 同時必須在package.json 定義指令
@@ -43,7 +49,8 @@ export async function activate(context: vscode.ExtensionContext) {
         knitr.opts_chunk.workdir = workdir;
 
         if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
-          console.log("Found a 'sysprofile.do'");
+          //console.log("Found a 'sysprofile.do'");
+          vscode.window.showWarningMessage("Found a 'sysprofile.do', will be executed first");
         }
         if (fs.existsSync(path.join(path.dirname(path.dirname(stataexe)), 'profile.do'))) {
 
@@ -53,7 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
           vscode.window.showWarningMessage(wmsg)
         }
       } else {
-        console.log("No Stata executable found.");
+        vscode.window.showWarningMessage("No Stata executable found.");
       }
       //note3+1
       process.chdir(workdir)
@@ -77,9 +84,11 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage('Conversion failed: ' + (err.message || String(err)));
     } finally {
 
-      await unlink('profile.do')
+      //await unlink('profile.do')
+      fs.unlinkSync('profile.do')
       if (originalProfile) {
-        await writeFile('profile.do');
+        fs.writeFileSync('profile.do',originalProfile)
+        //await writeFile('profile.do');
       }
     }
   });
@@ -106,7 +115,7 @@ export async function activate(context: vscode.ExtensionContext) {
       //const text = fs.readFileSync(doc.fileName, 'utf8');
       const text = fs.readFileSync(doc, 'utf8');
       const nb = JSON.parse(text);
-      const md = convertIpynbToMarkdown(nb);
+      const md = convertIpynbToMarkdown(nb,path.parse(doc).dir+'\\'+path.parse(doc).name+'.files');
       const outPath = doc.replace(/\.ipynb$/i, '') + '.md';
       fs.writeFileSync(outPath, md, 'utf8');
       vscode.window.showInformationMessage(`Markdown written to ${outPath}`);
@@ -174,7 +183,7 @@ export async function activate(context: vscode.ExtensionContext) {
       fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
       vscode.window.showInformationMessage(`Notebook written to ${outPath}`);      
       //轉MD
-      const md = convertIpynbToMarkdown(nb);
+      const md = convertIpynbToMarkdown(nb,'xx')//path.parse(doc).name);
       outPath = outPath.replace(/\.ipynb$/i, '') + '.md';
       fs.writeFileSync(outPath, md, 'utf8');
       vscode.window.showInformationMessage(`Markdown written to ${outPath}`);
@@ -187,9 +196,11 @@ export async function activate(context: vscode.ExtensionContext) {
     } finally {
 
 
-      await unlink('profile.do')
+      //await unlink('profile.do')
+      fs.unlinkSync('profile.do')
       if (originalProfile) {
-        await writeFile('profile.do');
+        fs.writeFileSync('profile.do',originalProfile)
+        //await writeFile('profile.do');
       }
     }
   });

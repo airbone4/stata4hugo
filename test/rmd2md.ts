@@ -1,22 +1,24 @@
 
-import { convertMarkdownToIpynb } from '../src/converter';
-import { convertIpynbToMarkdown } from '../src/ipynbToMd';
+import { convertMarkdownToIpynb } from '../src/converter.js';
+import { convertIpynbToMarkdown } from '../src/ipynbToMd.js';
 import * as path from 'path';
 import * as fs from 'fs';
-const { promisify } = require('util');
-const knitr = require('../src/statatool/knitr');
-const { find_stata } = require('../src/statatool/find_stata');
 
-const readFile = promisify(fs.readFile);
-const writeFile = promisify(fs.writeFile);
-const appendFile = promisify(fs.appendFile);
-const unlink = promisify(fs.unlink);
-const access = promisify(fs.access);
 
-async function xx(){
-    const doc = "./逐步幫手文件.Rmarkdown";
-    const text = await readFile(doc,'utf8')
-    console.log(text)
+import * as knitr from '../src/statatool/knitr.js'
+import {find_stata } from '../src/statatool/find_stata.js'
+
+
+export async function testmd2nb(doc){
+    const __dirname = path.resolve();
+    
+    const workdir=path.join(__dirname,"examples")
+    console.log(__dirname)
+    console.log(workdir)
+    return
+    //const doc = "逐步幫手文件.Rmarkdown"
+    const text = fs.readFileSync(path.join(workdir,doc),'utf8')
+    //console.log(text)
     const ext = path.extname(doc).toLowerCase();
     // if (!['.md', '.rmd', '.rmarkdown'].includes(ext)) {
       
@@ -26,7 +28,7 @@ async function xx(){
     try {
       //
       const outPath = doc.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
-      const workdir = path.dirname(outPath);
+      //const workdir = path.dirname(outPath);
 
 
       // Find Stata executable
@@ -72,12 +74,13 @@ async function xx(){
       console.log('Conversion failed: ' + (err.message || String(err)));
     } finally {
 
-       await unlink('profile.do')
+      fs.unlinkSync('profile.do')
       if (originalProfile) {
-        await writeFile('profile.do');
+        fs.writeFileSync('profile.do',originalProfile);
       }
     }
   
   } 
-
-  xx()
+// 讀入逐步幫手文件.Rmarkdown -> ipynb
+  testmd2nb("逐步幫手文件.Rmarkdown")
+ 

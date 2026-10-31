@@ -1,15 +1,12 @@
 // Main entry point for the Statamarkdown package
-const { find_stata } = require('./find_stata');
+import { find_stata } from './find_stata.js';
+import { stata_engine } from './stata_engine.js';
+import { stataoutput } from './stataoutputhook.js';
+//import { stata_collectcode } from './stata_collectcode.js';
 
-const { stata_engine } = require('./stata_engine');
-const { stataoutput } = require('./stataoutputhook');
-const { stata_collectcode } = require('./stata_collectcode');
-
-
-module.exports = {
+export {
     find_stata,
     stata_engine,
     stataoutput,
     stata_collectcode
-    
 };

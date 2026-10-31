@@ -1,16 +1,15 @@
-const fs = require('fs');
-
-const path = require('path');
-const { exec } = require('child_process');
-const os = require('os');
-//const knitr = require('./knitr');
+import fs from 'fs';
+import path from 'path';
+import { exec } from 'child_process';
+import os from 'os';
+//import knitr from './knitr.js';
 
 /**
  * Finds the Stata executable on the system
  * @param {boolean} [showMessage=true] - Whether to show status messages
  * @returns {Promise<string>} Path to Stata executable or empty string if not found
  */
-async function find_stata(showMessage = true) {
+export async function find_stata(showMessage = true) {
     let stataexe = "";
     const platform = process.platform;
 
@@ -103,5 +102,3 @@ async function find_stata(showMessage = true) {
 
     return stataexe;
 }
-
-module.exports = { find_stata };
