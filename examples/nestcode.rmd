@@ -1,0 +1,100 @@
+---
+title: R 翻譯rmarkdown
+description: rscript
+tags: []
+categories: []
+series: []
+editext: Rmarkdown
+---
+
+### Rmarkdown模板
+RMD 範本
+````rmd
+這個block是一定需要的,用來啟動stata在batch模式下工作
+```{r setup, echo=FALSE, message=FALSE,results="hide"}
+library(Statamarkdown)
+knitr::opts_chunk$set(cleanlog = F)
+```
+
+如果有自己本地的ADO,需要`adopath`指令
+
+同時設定輸出限制為255
+
+```{stata, collectcode=T, echo=FALSE, message=FALSE,results="hide"}
+adopath + ".."
+adopath + "../utils/"
+set linesize 255
+```
+
+## 紀錄
+```{stata,echo=F,block.pre.class="ms-5.w-75"}
+use "https://rmilab.nkust.edu.tw/files/bookdata/lecture/chen_ex_10_2.dta", clear
+regress y x1
+ereturn list
+scalar dfm=e(df_m)
+scalar dfr=e(df_r)
+//tss=mss+rss
+predict yhat
+predict r,resid
+// y= yhat+r
+list y yhat r in 1
+gen r2=r*r
+list y yhat r r2 in 1
+sum r2
+return list
+scalar rss=r(sum)
+disp rss
+
+//開始算mss (yhat-ymean)^2 之總和
+sum y
+scalar ymean=r(mean)
+gen t1=yhat-ymean
+gen t2=t1*t1
+sum t2
+scalar mss=r(sum)
+disp "mss= " mss
+
+//算tss ==> (y-ymean)^2 之總和
+//驗算 下面的結果應該和我們的tss是一樣的
+disp rss+mss
+//QED TSS=MSS+RSS
+
+scalar f=(mss/dfm)/(rss/dfr)
+disp "f= " f
+disp "t of x1 = " sqrt(f)
+disp "another meethod to get t " _b[x1]/_se[x1]
+
+//QED F=t^2
+ 
+regress y x1
+scalar m1rss=e(rss)
+scalar m1dfr=e(df_r)
+scalar m1dfm=e(df_m)
+scalar m1mss=e(mss)
+
+scalar f1=(m1mss/e(df_m))/(m1rss/m1dfr)
+display "對照上表" f1 "," sqrt(f1)
+regress y x1 x2
+scalar m2rss=e(rss)
+scalar m2dfr=e(df_r)
+scalar m2mss=e(mss)
+
+scalar f=((m2mss-m1mss)/1)/(m2rss/m2dfr)
+
+display "對照上表" f "," sqrt(f)
+
+
+regress y x1 
+scalar f=(m1mss/m1dfm)/(m1rss/m1dfr)
+
+//k: 包括常數項的項目
+//模型的自由度就是 K-1
+//N 是樣本總個數
+//殘差自由度就是 (N-1)-(k-1)=n-k
+
+
+
+
+
+```
+````

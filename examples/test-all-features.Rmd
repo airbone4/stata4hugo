@@ -12,7 +12,7 @@ knitr::opts_chunk$set(cleanlog = F)
 
 ```{stata, collectcode=T, echo=FALSE, message=FALSE,results="hide"}
 adopath + ".."
-adopath + "../utils/"
+adopath + "./tools/"
 set linesize 255
 ```
 ##  設定stata
@@ -40,9 +40,21 @@ mean(x)
 ```
 
 Stata code:
-```{stata,echo=FALSE}
+```{stata,echo=F}
 sysuse auto
 summarize price
+```
+
+```{stata,echo=False,block.pre.class="ms-5.w-75"}
+adopath
+clear all
+set obs 300
+egen n=seq()
+gen eta1=1/(1+0.75*n) //eta=1, etarate=0.75
+graph twoway line eta1 n
+graph export "out/nkbpn_adjby1.png", as(png) name("Graph") replace
+
+hugocmd attachtoa,hbody(`" class="mypp" path="out/nkbpn_adjby1.png" "') 
 ```
 
 R with options:

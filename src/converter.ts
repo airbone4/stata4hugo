@@ -1,6 +1,7 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { Root, Content, Paragraph, Heading, Code, Literal } from 'mdast';
+import * as fs from 'fs'
 
 import { doStata } from './statatool/dostata.js'
 
@@ -75,6 +76,10 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
       }).join('\n') + '\n\n';
     case 'code':
       const c = node as Code;
+      
+      if(/```[\s|\S]*```/.test(c.value)) //nest code block
+      return '````' + (c.lang || '') + '\n' + (c.value || '') + '\n````\n\n';
+      else
       return '```' + (c.lang || '') + '\n' + (c.value || '') + '\n```\n\n';
     case 'link':
       const link = node as any;
@@ -99,6 +104,8 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
 
 export async function convertMarkdownToIpynb(text: string, workdir?: string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)
+
+
   let yamlFront = '';
   let restText = text;
   if (text.startsWith('---')) {
@@ -123,19 +130,42 @@ export async function convertMarkdownToIpynb(text: string, workdir?: string, opt
       source: yamlFront + '\n'
     });
   }
-
+  cells.push({
+      cell_type: 'code',
+      execution_count: null,
+      metadata: {
+        tags: [   "hide" ]
+      },      
+      outputs: [],
+      source: 'import stata_setup\n' + 'stata_setup.config("C:/Program Files/Stata18/", "mp")\n'
+    })
+  cells.push({
+   cell_type: "code",
+   execution_count: null,   
+   metadata: {
+    tags: [
+     "hide"
+    ]
+   },
+   outputs: [],
+   source: [
+    "%stata set linesize 255"
+   ]
+  })
   // We'll iterate and group consecutive non-code nodes into one markdown cell.
   let pendingMarkdown: string[] = [];
 
-  async function flushMarkdown() {
-
+  function flushMarkdown() {
+    //將累積的部分而輸出成markdown block
     if (pendingMarkdown.length === 0) return;
-    cells.push({
+    let acell = {
       cell_type: 'markdown',
       metadata: {},
       source: pendingMarkdown.join('')
-    });
+    }
+    cells.push(acell);
     pendingMarkdown = [];
+    return acell
   }
   //note4 +1
   //note5 -1
@@ -158,8 +188,9 @@ export async function convertMarkdownToIpynb(text: string, workdir?: string, opt
         continue;
       }
 
-      // For curly-braced chunks, convert to a code cell
+      
       flushMarkdown();
+      // For curly-braced chunks, convert to a code cell
       let info = rawInfo;
       let lang = '';
       let metadata: any = {};
@@ -172,7 +203,7 @@ export async function convertMarkdownToIpynb(text: string, workdir?: string, opt
         const parts = info.split(',').map(p => p.trim()).filter(p => p.length > 0);
         if (parts.length > 0) {
           // first part may contain language and possibly inline options separated by whitespace
-          let first = parts[0];
+          let first = parts[0]; //就是code fence 三個反頓號後面的字串
           const firstTokens = first.split(/\s+/).filter(Boolean);
           lang = firstTokens[0] || '';
           const restParts: string[] = [];
@@ -191,24 +222,60 @@ export async function convertMarkdownToIpynb(text: string, workdir?: string, opt
           }
         }
       }
-
+       
+      //只有```{lang} 會到這裡
       let codeSource = (c.value || '') + '\n';
-
 
       if ((lang || '').toLowerCase() === 'stata') {
         const rst = await doStata(codeSource, workdir, metadata);
+
         //原來的程式碼
-        let rstnode: Object = {};
-        if (metadata.echo !== false) {
-          rstnode = { lang: info, type: 'code', value: codeSource } as Literal;
+        let rstnode: any = {};
+        let acodecell:any={}
+        
+          rstnode = { lang: info, type: 'code', value: codeSource } as Literal;          
           pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
+          acodecell=flushMarkdown()
+          //懶得重寫flushMarkdown ,因此用這兩行直接修正
+          acodecell.source='%%stata\n'+codeSource
+          acodecell.cell_type='code'
+          acodecell.execution_count=1
+          acodecell.metadata={tags:[]}; //初始化,空的
+        if (metadata.echo == false) {          
+          const hidesource=["hidesource"];  
+          acodecell.metadata.tags=[...acodecell.metadata.tags,...hidesource]
         }
         //執行結果程式碼
-        if (metadata.results !== 'hide') {
-          rstnode = { lang: 'stata', type: 'code', value: rst } as Literal;
-          pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
-        }
+        //hide:=true 只有顯示程式碼,不顯示結果
+        
+          
+          //這裡只有處理 字串輸出,圖形輸出沒有
+          acodecell.outputs=[]
+          let cellout:any={}
+          cellout.name="stdout"
+          cellout.output_type="stream"
+          cellout.text=rst.txt.split('\n')
+
+          acodecell.outputs.push(cellout) 
+         if (metadata.results == 'hide') {  
+           const hideoutput=["hideoutput"];  
+           acodecell.metadata.tags=[...acodecell.metadata.tags,...hideoutput]          
+          }
+         for (const item of rst.imglist){
+          let imgobject = {
+            data: {},
+            "metadata": {},
+            "output_type": "display_data"            
+          }
+          const imgcontent =fs.readFileSync(item,'utf8');
+          imgobject.data["image/svg+xml"]=imgcontent
+          acodecell.outputs.push(imgobject)
+         }
+
+           
+        
       } else {
+        //其他語言不處理,留著給ipynb處理
         cells.push({
           cell_type: 'code',
           execution_count: null,
@@ -231,8 +298,8 @@ export async function convertMarkdownToIpynb(text: string, workdir?: string, opt
   function parseOptionValue(v: string): any {
     if (!v) return v;
     const low = v.toLowerCase();
-    if (low === 'true') return true;
-    if (low === 'false') return false;
+    if (low === 'true' || low==='t') return true;
+    if (low === 'false'|| low==='f') return false;
     // number?
     const n = Number(v);
     if (!Number.isNaN(n)) return n;

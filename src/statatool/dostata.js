@@ -10,9 +10,31 @@ import { find_stata } from './find_stata.js';
 import { stata_engine } from './stata_engine.js';
 import { stataoutput } from './stataoutputhook.js';
 
+function predo(afolder=''){
+  
+const toolpath = afolder === '' 
+  ? path.resolve(import.meta.dirname, '../../../tools') 
+  : afolder;  
 
-
+  const rst=`adopath + "${toolpath}"
+  set linesize 255
+  //<<- pre ->>
+  `
+  return rst
+}
+function postdo(adir){
+const rst=  `//<<- post ->>
+graph dir
+return list
+foreach item in \`r(list)'{
+  graph export ${adir}/\`item'.svg, replace name(\`item')
+  
+}
+`
+return rst
+}
 export async function doStata(stataCode, workdir, metadata) {
+  
   try {
     // Set default chunk options
     knitr.opts_chunk.code = stataCode.split("\n");
@@ -33,11 +55,17 @@ export async function doStata(stataCode, workdir, metadata) {
       path.join(knitr.opts_chunk.workdir, 'profile.do'), 
       knitr.opts_chunk.collectcode ? knitr.opts_chunk.code.join('\n') + '\n' : '\n'
     );
-    
+    let pretxt=predo()
+    let posttxt=postdo(path.join(import.meta.dirname,'../../../temp'))
+    //整合原來的程式碼 + posttxt
+    knitr.opts_chunk.code=[...pretxt.split('\n'), ...knitr.opts_chunk.code,...posttxt.split('\n')];
     const rst = await stata_engine(knitr.opts_chunk);
     const final_rst = stataoutput(rst.output.split("\n"), knitr.opts_chunk);
     
-    return Array.isArray(final_rst) ? final_rst.join('\n') : final_rst;
+    return {
+      txt:Array.isArray(final_rst) ? final_rst.join('\n') : final_rst,
+      imglist:rst.imglist
+    }
   } catch (error) {
     console.error('Error running example:', error);
     // note2: -1 為甚麼

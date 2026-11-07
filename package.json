@@ -2,7 +2,7 @@
   "name": "hugo-helper",
   "displayName": "linchao's huto tool",
   "publisher": "linchao",
-  "version": "0.0.1",
+  "version": "0.0.8",
   "engines": {
     "vscode": "^1.140.0"
   },
@@ -37,13 +37,38 @@
       {
         "command": "extension.newnb",
         "title": "Hugo tool: create my stata ipynb"
-      }      
+      },
+      {
+        "command": "extension.cleanmarkup",
+        "title": "Hugo tool: clean markup"
+      } ,
+      {
+        "command": "extension.resetIpynb2mdSettings",
+        "title": "Jupyter: Reset ipynb2md Overwrite Prompt Settings"
+      }
     ],
     "keybindings": [
       {
+        "command": "extension.rmd2md",
+        "key": "ctrl+m ctrl+o",
+        "mac": "cmd+m cmd+o",
+        "when": "editorTextFocus"
+      },       {
+        "command": "extension.ipynb2md",
+        "key": "ctrl+m ctrl+m",
+        "mac": "cmd+m cmd+m",
+        "when": "editorTextFocus"
+      },      
+      {
         "command": "extension.ipynb2md_shell",
-        "key": "ctrl+m",
-        "mac": "cmd+m",
+        "key": "ctrl+m ctrl+j",
+        "mac": "cmd+m cmd+j",
+        "when": "editorTextFocus"
+      },      
+      {
+        "command": "extension.rmd2ipynb",
+        "key": "ctrl+m ctrl+i",
+        "mac": "cmd+m cmd+i",
         "when": "editorTextFocus"
       }
     ],
@@ -51,7 +76,7 @@
       "explorer/context": [
         {
           "when": "resourceExtname == .ipynb",
-          "command": "extension.ipynb2md_shell"
+          "command": "extension.ipynb2md"
         },
         {
           "when": "resourceExtname == .Rmarkdown || resourceExtname == .rmarkdown || resourceExtname == .rmd || resourceExtname == .Rmd",
@@ -74,7 +99,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "@types/vscode": "^1.144.0",
+    "@types/vscode": "^1.140.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
     "eslint": "^10.5.0",

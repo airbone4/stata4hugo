@@ -9,16 +9,14 @@ import * as knitr from '../src/statatool/knitr.js'
 import {find_stata } from '../src/statatool/find_stata.js'
 
 
-export async function testmd2nb(doc){
-    const __dirname = path.resolve();
+export async function testmd2nb(workdir,doc){
     
-    const workdir=path.join(__dirname,"examples")
-    console.log(__dirname)
-    console.log(workdir)
-    return
+
+  
+
     //const doc = "逐步幫手文件.Rmarkdown"
     const text = fs.readFileSync(path.join(workdir,doc),'utf8')
-    //console.log(text)
+ 
     const ext = path.extname(doc).toLowerCase();
     // if (!['.md', '.rmd', '.rmarkdown'].includes(ext)) {
       
@@ -53,7 +51,7 @@ export async function testmd2nb(doc){
       }
       //note3+1
       process.chdir(workdir)
-      console.log(workdir)
+      console.log('切換'+workdir)
       //note5
 
       if (fs.existsSync('profile.do')) {
@@ -64,8 +62,9 @@ export async function testmd2nb(doc){
 
 
       const nb = await convertMarkdownToIpynb(text, workdir);
+      
 
-
+ 
 
       fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
       console.log(`Notebook written to ${outPath}`);
@@ -82,5 +81,10 @@ export async function testmd2nb(doc){
   
   } 
 // 讀入逐步幫手文件.Rmarkdown -> ipynb
-  testmd2nb("逐步幫手文件.Rmarkdown")
+    const __dirname = import.meta.dirname;  //本程式所在位置
+    let workdir=path.resolve(__dirname,'../examples')   
+  //testmd2nb(workdir,"逐步幫手文件.Rmarkdown")
+  //testmd2nb(workdir,"example1.Rmd")
+  //testmd2nb(workdir,"test-all-features.Rmd")
+  testmd2nb(workdir,"nestcode.rmd")
  

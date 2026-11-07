@@ -41,12 +41,18 @@ let content=`{
   },
   {
    "cell_type": "code",
-   "execution_count": 2,
+   "execution_count": null,
    "id": "6e6a2ae1",
-   "metadata": {},
+      "metadata": {
+    "tags": [
+     "hide"
+    ]
+   },
    "outputs": [],
    "source": [
-    "%stata set linesize 255"
+    "%%stata",
+    "set linesize 255",
+    "adopath + \\"${path.resolve(import.meta.dirname, '../../tools').replaceAll('\\','/')}\\""
    ]
   }
  ],

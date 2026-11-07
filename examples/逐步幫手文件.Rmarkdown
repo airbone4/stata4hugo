@@ -26,6 +26,8 @@ set linesize 255
 ## 紀錄
 ```{stata,echo=F,block.pre.class="ms-5.w-75"}
 use "https://rmilab.nkust.edu.tw/files/bookdata/lecture/chen_ex_10_2.dta", clear
+
+//這是註解
 sw regress y x1 x2 x3 x4,pr(0.05)
 
 ```
