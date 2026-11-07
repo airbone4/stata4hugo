@@ -102,7 +102,7 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
   }
 }
 
-export async function convertMarkdownToIpynb(text: string, workdir?: string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
+export async function rmd2md(text: string, workdir?: string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)
 
 

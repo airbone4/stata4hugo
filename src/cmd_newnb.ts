@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { convertMarkdownToIpynb } from './converter.js';
-import { convertIpynbToMarkdown } from './ipynbToMd.js';
+import { rmd2md } from './rmd2md.js';
+import { nb2md } from './nb2md.js';
 import {newnb} from './newnb.js'
 import * as path from 'path';
 import * as fs from 'fs';

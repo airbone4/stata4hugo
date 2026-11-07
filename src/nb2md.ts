@@ -1,5 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { out_prefix_img } from './statatool/index.js';
+
 function saveBase64ToPNGFile(base64String, outputPath) {
   // 1. 移除可能帶有的 Data URL 標頭前綴
   const base64Data = base64String.replace(/^data:image\/\w+;base64,/, "");
@@ -9,13 +11,7 @@ function saveBase64ToPNGFile(base64String, outputPath) {
 
   // 3. 寫入檔案到指定路徑
   fs.writeFileSync(outputPath, imageBuffer)
-  // fs.writeFile(outputPath, imageBuffer, (err) => {
-  //     /*if (err) {
-  //         console.error('儲存圖片時發生錯誤:', err);
-  //     } else {
-  //         console.log(`圖片已成功儲存至: ${outputPath}`);
-  //     }*/
-  // });
+
 }
 
 function saveSvgToFile(svgString, outputPath) {
@@ -27,8 +23,8 @@ function saveSvgToFile(svgString, outputPath) {
 }
 
 
-function getUniqueFilenameSync(folderPath, prefix = 'xxxx', extension = '.png') {
-  // 1. 確保資料夾存在，若不存在則建立,預設產生xxxx.png, xxxx1.png
+function getUniqueFilenameSync(folderPath, prefix = '_xxxx', extension = '.png') {
+  // 1. 確保資料夾存在，若不存在則建立,預設產生_xxxx.png, _xxxx1.png
   if (!fs.existsSync(folderPath)) {
     fs.mkdirSync(folderPath, { recursive: true });
   }
@@ -49,7 +45,7 @@ function getUniqueFilenameSync(folderPath, prefix = 'xxxx', extension = '.png') 
 }
 
 
-export function convertIpynbToMarkdown(nb: any, imgfolder: string): string {
+export function nb2md(nb: any, imgfolder: string): string {
   const parts: string[] = [];
   const tofolder = imgfolder
   if (nb.metadata && nb.metadata.title) {
@@ -112,14 +108,14 @@ export function convertIpynbToMarkdown(nb: any, imgfolder: string): string {
             //obj.data["image/svg+xml"]? outtxt=obj.data["image/svg+xml"].join(''):outtxt=outtxt
             //obj.data["image/png"]? outtxt= '\n<img class="w-75 h-75" src="data:image/png;base64,'+obj.data["image/png"] +'" alt="Folly Image">\n':outtxt=outtxt;
             if (obj.data["image/svg+xml"]) {
-              let imgfile = getUniqueFilenameSync(imgfolder, path.parse(imgfolder).name, ".svg")
+              let imgfile = getUniqueFilenameSync(imgfolder, out_prefix_img+path.parse(imgfolder).name, ".svg")
 
               saveSvgToFile(Array.isArray(obj.data["image/svg+xml"]) ? obj.data["image/svg+xml"].join('') : obj.data["image/svg+xml"], imgfolder + '/' + imgfile)
               outtxt = `\n![](${path.basename(imgfolder)}/${imgfile})\n{ class="lineimg w-100 h-50"}\n\n`
             }
 
             if (obj.data["image/png"]) {
-              let imgfile = getUniqueFilenameSync(imgfolder, path.parse(imgfolder).name, ".png")
+              let imgfile = getUniqueFilenameSync(imgfolder, out_prefix_img+path.parse(imgfolder).name, ".png")
 
               saveBase64ToPNGFile(obj.data["image/png"], imgfolder + '/' + imgfile)
               outtxt = `\n![](${path.basename(imgfolder)}/${imgfile} )\n{ class="lineimg w-100 h-50"}\n\n`
@@ -189,6 +185,6 @@ return parts.join('\n');
 export function convertIpynbFileToMd(inputPath: string, outputPath: string) {
   const data = fs.readFileSync(inputPath, 'utf8');
   const nb = JSON.parse(data);
-  const md = convertIpynbToMarkdown(nb, path.parse(outputPath).name);
+  const md = nb2md(nb, path.parse(outputPath).name);
   fs.writeFileSync(outputPath, md, 'utf8');
 }

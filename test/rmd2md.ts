@@ -1,6 +1,6 @@
 
-import { convertMarkdownToIpynb } from '../src/converter.js';
-import { convertIpynbToMarkdown } from '../src/ipynbToMd.js';
+import { rmd2md } from '../src/rmd2md.js';
+import { nb2md } from '../src/nb2md.js';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -61,7 +61,7 @@ export async function testmd2nb(workdir,doc){
       }
 
 
-      const nb = await convertMarkdownToIpynb(text, workdir);
+      const nb = await rmd2md(text, workdir);
       
 
  

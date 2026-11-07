@@ -10,6 +10,7 @@ import { find_stata } from './find_stata.js';
 import { stata_engine } from './stata_engine.js';
 import { stataoutput } from './stataoutputhook.js';
 
+
 function predo(afolder=''){
   
 const toolpath = afolder === '' 

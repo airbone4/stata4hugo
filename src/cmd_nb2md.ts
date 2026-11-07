@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
-import { convertIpynbToMarkdown } from './ipynbToMd.js';
+import { nb2md } from './nb2md.js';
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { out_prefix_img } from './statatool/index.js';
 
 
 
@@ -69,7 +70,7 @@ export async function cmd_nb2md(uri,context:vscode.ExtensionContext)  {
   if (fs.existsSync(filesDir)) {
     try {
       const files = fs.readdirSync(filesDir);
-      const prefixname='_'+parsedPath.name
+      const prefixname=out_prefix_img+parsedPath.name
       files.forEach((file) => {
         // 判斷檔名是否以 __ 開頭
         if (file.startsWith(prefixname)) {
@@ -92,7 +93,7 @@ export async function cmd_nb2md(uri,context:vscode.ExtensionContext)  {
     const nb = JSON.parse(text);
 
     // 7. 執行核心轉換函數
-    const md = convertIpynbToMarkdown(nb, filesDir);
+    const md = nb2md(nb, filesDir);
 
     // 8. 寫入硬碟並跳出提示
     fs.writeFileSync(outPath, md, 'utf8');
@@ -130,7 +131,7 @@ export async function cmd_nb2md(uri)  {
       
 
       const filesDir = path.join(path.parse(doc).dir, path.parse(doc).name + '.files');
-      const md = convertIpynbToMarkdown(nb, filesDir);
+      const md = nb2md(nb, filesDir);
 
       const outPath = doc.replace(/\.ipynb$/i, '') + '.md';
       fs.writeFileSync(outPath, md, 'utf8');

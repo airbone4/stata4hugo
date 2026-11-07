@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
-import { convertMarkdownToIpynb } from './converter.js';
-import { convertIpynbToMarkdown } from './ipynbToMd.js';
+import { rmd2md } from './rmd2md.js';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import * as knitr from './statatool/knitr.js';
-import { find_stata } from './statatool/find_stata.js';
+//import * as knitr from './statatool/knitr.js';
+//import { find_stata } from './statatool/find_stata.js';
+import {knitr,find_stata } from './statatool/index.js'
 
 
-export async function cmd_rmd2ipynb ()  {
+export async function cmd_rmd2nb ()  {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
       vscode.window.showErrorMessage('Open a Markdown or R Markdown file first.');
@@ -61,7 +61,7 @@ export async function cmd_rmd2ipynb ()  {
       }
 
 
-      const nb = await convertMarkdownToIpynb(text, workdir);
+      const nb = await rmd2md(text, workdir);
 
 
 
