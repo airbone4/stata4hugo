@@ -76,11 +76,11 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
       }).join('\n') + '\n\n';
     case 'code':
       const c = node as Code;
-      
-      if(/```[\s|\S]*```/.test(c.value)) //nest code block
-      return '````' + (c.lang || '') + '\n' + (c.value || '') + '\n````\n\n';
+
+      if (/```[\s|\S]*```/.test(c.value)) //nest code block
+        return '````' + (c.lang || '') + '\n' + (c.value || '') + '\n````\n\n';
       else
-      return '```' + (c.lang || '') + '\n' + (c.value || '') + '\n```\n\n';
+        return '```' + (c.lang || '') + '\n' + (c.value || '') + '\n```\n\n';
     case 'link':
       const link = node as any;
       const linkText = link.children?.map((c: any) => nodeToMarkdown(c, depth, opts)).join(' ').replace(/\s+/g, ' ').trim() || link.title || '';
@@ -102,7 +102,7 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
   }
 }
 
-export async function rmd2md(text: string, workdir?: string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
+export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)
 
 
@@ -131,26 +131,26 @@ export async function rmd2md(text: string, workdir?: string, opts?: { listStyle?
     });
   }
   cells.push({
-      cell_type: 'code',
-      execution_count: null,
-      metadata: {
-        tags: [   "hide" ]
-      },      
-      outputs: [],
-      source: 'import stata_setup\n' + 'stata_setup.config("C:/Program Files/Stata18/", "mp")\n'
-    })
+    cell_type: 'code',
+    execution_count: null,
+    metadata: {
+      tags: ["hide"]
+    },
+    outputs: [],
+    source: 'import stata_setup\n' + 'stata_setup.config("C:/Program Files/Stata18/", "mp")\n'
+  })
   cells.push({
-   cell_type: "code",
-   execution_count: null,   
-   metadata: {
-    tags: [
-     "hide"
+    cell_type: "code",
+    execution_count: null,
+    metadata: {
+      tags: [
+        "hide"
+      ]
+    },
+    outputs: [],
+    source: [
+      "%stata set linesize 255"
     ]
-   },
-   outputs: [],
-   source: [
-    "%stata set linesize 255"
-   ]
   })
   // We'll iterate and group consecutive non-code nodes into one markdown cell.
   let pendingMarkdown: string[] = [];
@@ -188,7 +188,7 @@ export async function rmd2md(text: string, workdir?: string, opts?: { listStyle?
         continue;
       }
 
-      
+
       flushMarkdown();
       // For curly-braced chunks, convert to a code cell
       let info = rawInfo;
@@ -222,7 +222,7 @@ export async function rmd2md(text: string, workdir?: string, opts?: { listStyle?
           }
         }
       }
-       
+
       //只有```{lang} 會到這裡
       let codeSource = (c.value || '') + '\n';
 
@@ -231,49 +231,60 @@ export async function rmd2md(text: string, workdir?: string, opts?: { listStyle?
 
         //原來的程式碼
         let rstnode: any = {};
-        let acodecell:any={}
-        
-          rstnode = { lang: info, type: 'code', value: codeSource } as Literal;          
-          pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
-          acodecell=flushMarkdown()
-          //懶得重寫flushMarkdown ,因此用這兩行直接修正
-          acodecell.source='%%stata\n'+codeSource
-          acodecell.cell_type='code'
-          acodecell.execution_count=1
-          acodecell.metadata={tags:[]}; //初始化,空的
-        if (metadata.echo == false) {          
-          const hidesource=["hidesource"];  
-          acodecell.metadata.tags=[...acodecell.metadata.tags,...hidesource]
+        let acodecell: any = {}
+
+        rstnode = { lang: info, type: 'code', value: codeSource } as Literal;
+        pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
+        acodecell = flushMarkdown()
+        //懶得重寫flushMarkdown ,因此用這兩行直接修正
+        acodecell.source = '%%stata\n' + codeSource
+        acodecell.cell_type = 'code'
+        acodecell.execution_count = 1
+        acodecell.metadata = { tags: [] }; //初始化,空的
+        if (metadata.echo == false) {
+          const hidesource = ["hidesource"];
+          acodecell.metadata.tags = [...acodecell.metadata.tags, ...hidesource]
         }
         //執行結果程式碼
         //hide:=true 只有顯示程式碼,不顯示結果
-        
-          
-          //這裡只有處理 字串輸出,圖形輸出沒有
-          acodecell.outputs=[]
-          let cellout:any={}
-          cellout.name="stdout"
-          cellout.output_type="stream"
-          cellout.text=rst.txt.split('\n')
 
-          acodecell.outputs.push(cellout) 
-         if (metadata.results == 'hide') {  
-           const hideoutput=["hideoutput"];  
-           acodecell.metadata.tags=[...acodecell.metadata.tags,...hideoutput]          
-          }
-         for (const item of rst.imglist){
+
+        //這裡只有處理 字串輸出,圖形輸出沒有
+        acodecell.outputs = []
+        let cellout: any = {}
+        cellout.name = "stdout"
+        cellout.output_type = "stream"
+        cellout.text = rst ? rst.txt.split('\n') : '';
+
+        acodecell.outputs.push(cellout)
+        if (metadata.results == 'hide') {
+          const hideoutput = ["hideoutput"];
+          acodecell.metadata.tags = [...acodecell.metadata.tags, ...hideoutput]
+        }
+        //  for (const item of rst.imglist){
+        //   let imgobject = {
+        //     data: {},
+        //     "metadata": {},
+        //     "output_type": "display_data"            
+        //   }
+        //   const imgcontent =fs.readFileSync(item,'utf8');
+        //   imgobject.data["image/svg+xml"]=imgcontent
+        //   acodecell.outputs.push(imgobject)
+        //  }
+        // 💡 使用 ?. 與 || [] 確保安全, Boolean 是一個函數,每一個項目都會傳為參數
+        for (const item of rst?.imglist?.filter(Boolean) || []) {
           let imgobject = {
             data: {},
             "metadata": {},
-            "output_type": "display_data"            
+            "output_type": "display_data"
           }
-          const imgcontent =fs.readFileSync(item,'utf8');
-          imgobject.data["image/svg+xml"]=imgcontent
-          acodecell.outputs.push(imgobject)
-         }
+          const imgcontent = fs.readFileSync(item, 'utf8');
+          imgobject.data["image/svg+xml"] = imgcontent;
+          acodecell.outputs.push(imgobject);
+        }
 
-           
-        
+
+
       } else {
         //其他語言不處理,留著給ipynb處理
         cells.push({
@@ -298,8 +309,8 @@ export async function rmd2md(text: string, workdir?: string, opts?: { listStyle?
   function parseOptionValue(v: string): any {
     if (!v) return v;
     const low = v.toLowerCase();
-    if (low === 'true' || low==='t') return true;
-    if (low === 'false'|| low==='f') return false;
+    if (low === 'true' || low === 't') return true;
+    if (low === 'false' || low === 'f') return false;
     // number?
     const n = Number(v);
     if (!Number.isNaN(n)) return n;

@@ -29,9 +29,10 @@ export function engine_output(options, code, out) {
 }
 */
 
-const knit_engines = {};
-const opts_chunk = {};
-const knit_hooks = {};
+// 修改後的 knitr.js
+const knit_engines = new Map();
+const opts_chunk = new Map();
+const knit_hooks = new Map();
 
 function engine_output(options, code, out) {
     return { options, code, out };

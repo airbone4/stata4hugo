@@ -1,40 +1,40 @@
 import * as vscode from 'vscode';
-import { rmd2md } from './rmd2md.js';
+import { rmd2nb } from './rmd2nb.js';
 import * as path from 'path';
 import * as fs from 'fs';
 
-//import * as knitr from './statatool/knitr.js';
-//import { find_stata } from './statatool/find_stata.js';
+
 import {knitr,find_stata } from './statatool/index.js'
 
 
-export async function cmd_rmd2nb ()  {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showErrorMessage('Open a Markdown or R Markdown file first.');
-      return;
-    }
+export async function cmd_rmd2nb (aPath:string)  {
+    // const editor = vscode.window.activeTextEditor;
+    // if (!editor) {
+    //   vscode.window.showErrorMessage('Open a Markdown or R Markdown file first.');
+    //   return;
+    // }
 
-    const doc = editor.document;
-    const text = doc.getText();
-    const ext = path.extname(doc.fileName).toLowerCase();
+    // const doc = editor.document;
+    // const text = doc.getText();
+    //const ext = path.extname(doc.fileName).toLowerCase();
+    const text=fs.readFileSync(aPath,'utf8')
+    const ext = path.extname(aPath).toLowerCase();
     if (!['.md', '.rmd', '.rmarkdown'].includes(ext)) {
       vscode.window.showWarningMessage('File does not have a .md or .rmd extension, attempting conversion anyway.');
     }
 
     let originalProfile = ''
-    try {
-      //
-      const outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
+      const outPath = aPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
       const workdir = path.dirname(outPath);
-
-
-      // Find Stata executable
+      const profilepath= path.join(workdir,'profile.do')
+    try {
+        // Find Stata executable
       const stataexe = await find_stata();
       if (stataexe !== "") {
-        knitr.opts_chunk.engine_path = { stata: stataexe };
-        knitr.opts_chunk.engine = "stata";
-        knitr.opts_chunk.workdir = workdir;
+     
+        knitr.opts_chunk.set('engine_path' , { stata: stataexe });
+        knitr.opts_chunk.set('engine' , "stata");
+        knitr.opts_chunk.set('workdir' , workdir);
 
         if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
           //console.log("Found a 'sysprofile.do'");
@@ -50,18 +50,18 @@ export async function cmd_rmd2nb ()  {
       } else {
         vscode.window.showWarningMessage("No Stata executable found.");
       }
-      //note3+1
-      process.chdir(workdir)
-      //note5
+
       //這是rmarkdown 中所在的目錄
-      if (fs.existsSync('profile.do')) {
-        originalProfile = fs.readFileSync('profile.do', 'utf8');
+
+      
+      if (fs.existsSync(profilepath)) {
+        originalProfile = fs.readFileSync(profilepath, 'utf8');
         vscode.window.showWarningMessage(`Found an existing 'profile.do'\n${originalProfile}`);
 
-      }
+      }      
 
 
-      const nb = await rmd2md(text, workdir);
+      const nb = await rmd2nb(text, workdir);
 
 
 
@@ -73,10 +73,12 @@ export async function cmd_rmd2nb ()  {
     } finally {
 
        
-      fs.unlinkSync('profile.do')
-      if (originalProfile) {
-        fs.writeFileSync('profile.do',originalProfile)
-        
+      if (fs.existsSync(profilepath)) {
+        fs.unlinkSync(profilepath)
+        if (originalProfile) {
+          fs.writeFileSync(profilepath, originalProfile)
+          
+        }
       }
     }
   }

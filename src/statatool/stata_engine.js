@@ -36,7 +36,7 @@ export async function stata_engine(options) {
   // Process code based on eval options
 
   let processedCode = options.code;
-
+  const absoluteWorkDir = options.workdir;
   // Write code to file
   doFile = path.join(options.workdir, doFile);
   logFile = path.join(options.workdir, logFile);
@@ -79,28 +79,43 @@ export async function stata_engine(options) {
   let output = '';
 
   // Execute command if eval is not false 不要執行的話就是eval=F
-  if (!options.eval?.every(e => e === false)) {
+  //如果options.eval不確定是陣列
+  // const shouldEval = Array.isArray(options.eval) 
+  // ? !options.eval.every(e => e === false) 
+  // : options.eval !== false; // 如果是 true 或 undefined(預設) 都算 true
+
+  //if (!options.eval?.every(e => e === false)) {
+  if (options.eval !== false) {
     console.log(`running: ${enginePath} ${command}`);
-
     try {
-
-      const { stdout, stderr } = execSync(
-        `"${enginePath}" ${command}`,
-        { env: options.engine_env }
-      );
-
-      output = (stdout ? `\n${stdout}` : '') + (stderr ? `\n${stderr}` : '');
+      // 執行你的 execSync 邏輯...
+      output = execSync(`"${enginePath}" ${command}`, {
+        cwd: absoluteWorkDir,
+        encoding: 'utf8'
+      });
     } catch (error) {
-      if (!options.error) {
-        throw error;
-      }
-      output = `Error in running command ${enginePath}`;
+      console.error('Stata 執行失敗:', error.message);
+      throw error;
     }
+    // try {
+
+    //   const { stdout, stderr } = execSync(
+    //     `"${enginePath}" ${command}`,
+    //     { env: options.engine_env }
+    //   );
+
+    //  output = (stdout ? `\n${stdout}` : '') + (stderr ? `\n${stderr}` : '');
+    // } catch (error) {
+    //   if (!options.error) {
+    //     throw error;
+    //   }
+    //   output = `Error in running command ${enginePath}`;
+    // }
 
     // Read log file if it exists
     if (options.engine === 'stata' && fs.existsSync(logFile)) {
       let logContent = fs.readFileSync(logFile, 'utf8');
-      logContent= logContent.replace(/\r\n|\r|\n/g, '\n')
+      logContent = logContent.replace(/\r\n|\r|\n/g, '\n')
       //修剪predo
       //let aend = logContent.indexOf('//<<- pre ->>')
       //logContent = logContent.slice(aend+1)
@@ -108,8 +123,8 @@ export async function stata_engine(options) {
       //修剪postdo
       let regex = /<<- post ->>/;
       let lines = logContent.split('\n')
-  
-      const aend = lines.findIndex(line => regex.test(line));      
+
+      const aend = lines.findIndex(line => regex.test(line));
       //aend = logContent.indexOf('//<<- post ->>')
       let postrst = lines.slice(aend).join('\n')
       postrst = postrst.replace(/[\r]?\n>\s?/g, ''); //把STATA的段行,取代成為一行,就是太長,第二行有>開頭

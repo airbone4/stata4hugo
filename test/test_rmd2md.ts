@@ -1,5 +1,5 @@
 
-import { rmd2md } from '../src/rmd2md.js';
+import { rmd2nb } from '../src/rmd2nb.js';
 import { nb2md } from '../src/nb2md.js';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -32,9 +32,10 @@ export async function testmd2nb(workdir,doc){
       // Find Stata executable
       const stataexe = await find_stata();
       if (stataexe !== "") {
-        knitr.opts_chunk.engine_path = { stata: stataexe };
-        knitr.opts_chunk.engine = "stata";
-        knitr.opts_chunk.workdir = workdir;
+
+       knitr.opts_chunk.set('engine_path', { stata: stataexe });
+        knitr.opts_chunk.set('engine', "stata");
+        knitr.opts_chunk.set('workdir', workdir);        
 
         if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
           console.log("Found a 'sysprofile.do'");
@@ -49,19 +50,16 @@ export async function testmd2nb(workdir,doc){
       } else {
         console.log("No Stata executable found.");
       }
-      //note3+1
-      process.chdir(workdir)
-      console.log('切換'+workdir)
-      //note5
-
-      if (fs.existsSync('profile.do')) {
-        originalProfile = fs.readFileSync('profile.do', 'utf8');
+       
+      const profilepath= path.join(workdir,'profile.do')
+      if (fs.existsSync(profilepath)) {
+        originalProfile = fs.readFileSync(profilepath, 'utf8');
         console.log(`Found an existing 'profile.do'\n${originalProfile}`);
 
-      }
+      }   
 
 
-      const nb = await rmd2md(text, workdir);
+      const nb = await rmd2nb(text, workdir);
       
 
  

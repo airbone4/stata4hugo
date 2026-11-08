@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { rmd2md } from './rmd2md.js';
+import { rmd2nb } from './rmd2nb.js';
 import { nb2md } from './nb2md.js';
 import { cmd_rmd2nb } from './cmd_rmd2nb.js'
 import { cmd_newnb } from './cmd_newnb.js'
@@ -47,8 +47,15 @@ function getAllFolders(dirPath: string, folderList: string[] = []): string[] {
 
 export async function activate(context: vscode.ExtensionContext) {
 
-  // 指令1: 轉 md/rmd to ipynb, 同時必須在package.json 定義指令
-  let disposable = vscode.commands.registerCommand('extension.rmd2ipynb', cmd_rmd2nb);
+  // 指令1: 轉 md/rmd to ipynb
+  let disposable = vscode.commands.registerCommand('extension.rmd2ipynb', async(uri)=>{
+    const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+    if (!targetUri) {
+      vscode.window.showErrorMessage('找不到可轉換的檔案！');
+      return;
+    }    
+    await cmd_rmd2nb(targetUri.fsPath)
+  });
   context.subscriptions.push(disposable);
 
   // 指令2: 轉 ipynb to md
@@ -58,13 +65,26 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
       return;
     }
-    await cmd_nb2md(targetUri, context)
+    await cmd_nb2md(targetUri.fsPath, context)
   });
   context.subscriptions.push(disposable);
 
 
-  // 指令3: 測試用的指令
-  // 取代 r knitr套件
+  // 指令3: Rmarkdown -> notebook->markdown , ctrl M+O
+  disposable = vscode.commands.registerCommand('extension.rmd2md', async (uri) => {
+    const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+    if (!targetUri) {
+      vscode.window.showErrorMessage('找不到可轉換的檔案！');
+      return;
+    }
+    //await cmd_rmd2nb(targetUri)
+    const nbpath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
+    await cmd_rmd2nb(targetUri.fsPath)
+    await cmd_nb2md(nbpath, context)
+  });
+  context.subscriptions.push(disposable);  
+
+/*  
   const disposable3 = vscode.commands.registerCommand('extension.rmd2md', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -76,52 +96,54 @@ export async function activate(context: vscode.ExtensionContext) {
     const text = doc.getText();
     const ext = path.extname(doc.fileName).toLowerCase();
     if (!['.rmd', '.rmarkdown'].includes(ext)) {
-      vscode.window.showWarningMessage('File does not have a .rmd extension, attempting conversion anyway.');
+      vscode.window.showWarningMessage('File does not have a .rmd extension, stop‼️');
+      return;
     }
 
+    let outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
+    const workdir = path.dirname(outPath);
+    const profilepath= path.join(workdir,'profile.do')
     let originalProfile = ''
     try {
-      //
-      let outPath = doc.fileName.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
-      const workdir = path.dirname(outPath);
-
-
+  
       // Find Stata executable
       const stataexe = await find_stata();
-      if (stataexe !== "") {
-        knitr.opts_chunk.engine_path = { stata: stataexe };
-        knitr.opts_chunk.engine = "stata";
-        knitr.opts_chunk.workdir = workdir;
-
-        if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
-          console.log("Found a 'sysprofile.do'");
-        }
-        if (fs.existsSync(path.join(path.dirname(path.dirname(stataexe)), 'profile.do'))) {
-
-          const wmsg = "Found a 'profile.do' in the STATA executable directory.\n" +
-            "  This prevents 'collectcode' from working properly.\n" +
-            "  Please rename this 'sysprofile.do'."
-          vscode.window.showWarningMessage(wmsg)
-        }
-      } else {
-        console.log("No Stata executable found.");
+      if (stataexe === '') {
+        vscode.window.showWarningMessage("can't find stata ‼️");
+        return;
       }
-      //note3+1
-      process.chdir(workdir)
-      //note5
 
-      if (fs.existsSync('profile.do')) {
-        originalProfile = fs.readFileSync('profile.do', 'utf8');
+
+      knitr.opts_chunk.set('engine_path', { stata: stataexe });
+      knitr.opts_chunk.set('engine', "stata");
+      knitr.opts_chunk.set('workdir', workdir);
+
+      if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
+        console.log("Found a 'sysprofile.do'");
+      }
+      if (fs.existsSync(path.join(path.dirname(path.dirname(stataexe)), 'profile.do'))) {
+
+        const wmsg = "Found a 'profile.do' in the STATA executable directory.\n" +
+          "  This prevents 'collectcode' from working properly.\n" +
+          "  Please rename this 'sysprofile.do'."
+        vscode.window.showWarningMessage(wmsg)
+      }
+
+   
+      
+      if (fs.existsSync(profilepath)) {
+        originalProfile = fs.readFileSync(profilepath, 'utf8');
         vscode.window.showWarningMessage(`Found an existing 'profile.do'\n${originalProfile}`);
 
       }
 
       //轉Ipynb
-      const nb = await rmd2md(text, workdir);
+      const nb = await rmd2nb(text, workdir);
       fs.writeFileSync(outPath, JSON.stringify(nb, null, 2), 'utf8');
       vscode.window.showInformationMessage(`Notebook written to ${outPath}`);
       //轉MD
-      const md = nb2md(nb, 'xx')//path.parse(doc).name);
+      const filesDir = path.join(path.parse(outPath).dir, `${path.parse(outPath).name}.files`);
+      const md = nb2md(nb, filesDir)//path.parse(doc).name);
       outPath = outPath.replace(/\.ipynb$/i, '') + '.md';
       fs.writeFileSync(outPath, md, 'utf8');
       vscode.window.showInformationMessage(`Markdown written to ${outPath}`);
@@ -134,19 +156,19 @@ export async function activate(context: vscode.ExtensionContext) {
     } finally {
 
 
-      //await unlink('profile.do')
-      if (fs.existsSync('profile.do')) {
-        fs.unlinkSync('profile.do')
+    
+      if (fs.existsSync(profilepath)) {
+        fs.unlinkSync(profilepath)
         if (originalProfile) {
-          fs.writeFileSync('profile.do', originalProfile)
-          //await writeFile('profile.do');
+          fs.writeFileSync(profilepath, originalProfile)
+          
         }
       }
     }
   });
 
   context.subscriptions.push(disposable3);
-
+*/
 
   // 註冊指令，名稱要與 package.json 一致
   disposable = vscode.commands.registerCommand('extension.newnb', cmd_newnb);

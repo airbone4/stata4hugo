@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { rmd2md } from './rmd2md.js';
+import { rmd2nb } from './rmd2nb.js';
 import { nb2md } from './nb2md.js';
 import {newnb} from './newnb.js'
 import * as path from 'path';

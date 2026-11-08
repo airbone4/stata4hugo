@@ -2,7 +2,7 @@
 import { find_stata } from './find_stata.js';
 import { stata_engine } from './stata_engine.js';
 import { stataoutput } from './stataoutputhook.js';
-import {out_prefix_img } from './consts.js'
+import {out_prefix_img } from './config.js'
 import * as knitr from './knitr.js'
 //import { stata_collectcode } from './stata_collectcode.js';
 

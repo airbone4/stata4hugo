@@ -7,13 +7,13 @@ import { out_prefix_img } from './statatool/index.js';
 
 
 
-export async function cmd_nb2md(uri,context:vscode.ExtensionContext)  {
+export async function cmd_nb2md(docPath,context:vscode.ExtensionContext)  {
 
   // 1. 優先儲存當前作用中的檔案
   await vscode.commands.executeCommand('workbench.action.files.save');
 
   // 2. 獲取目標檔案路徑 (依序嘗試：右鍵選單 URI -> 筆記本編輯器 -> 文字編輯器)
-  let docPath = uri?.fsPath;
+  //let docPath = uri?.fsPath;
   if (!docPath) {
     docPath = vscode.window.activeNotebookEditor?.notebook.uri.fsPath 
            || vscode.window.activeTextEditor?.document.fileName;

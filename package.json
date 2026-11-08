@@ -93,7 +93,7 @@
     "xxpretest": "npm run compile && npm run lint", 
     "lint": "eslint src",
     "test": "vscode-test ",
-    "test1": "npx tsx test/rmd2md.ts",
+    "test1": "npx tsx test/test_rmd2md.ts",
     "test2": "npx tsx test/newemptynb.ts"
   },
   "devDependencies": {

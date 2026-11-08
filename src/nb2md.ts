@@ -85,19 +85,9 @@ export function nb2md(nb: any, imgfolder: string): string {
       const out_images = [];
       if (cell.outputs) {
         cell.outputs.forEach(obj => {
-          if (obj.output_type === "stream") {
-            if (isContinuous) {
-              // 連續狀態下，直接推入上一個子陣列中
-              out_stata.push(...obj.text);
-            } else {
-              // 第一次遇到或中斷後重新遇到，建立新陣列
-              out_stata.push(...obj.text);
-              isContinuous = true;
-            }
-          } else {
-            // 遇到非 stdout，將連續狀態重設為 false
-            isContinuous = false;
-          }
+          if (obj.output_type === "stream")
+            out_stata.push(obj.text.join('\n'))
+
         });
 
         cell.outputs.forEach(obj => {
@@ -108,17 +98,22 @@ export function nb2md(nb: any, imgfolder: string): string {
             //obj.data["image/svg+xml"]? outtxt=obj.data["image/svg+xml"].join(''):outtxt=outtxt
             //obj.data["image/png"]? outtxt= '\n<img class="w-75 h-75" src="data:image/png;base64,'+obj.data["image/png"] +'" alt="Folly Image">\n':outtxt=outtxt;
             if (obj.data["image/svg+xml"]) {
-              let imgfile = getUniqueFilenameSync(imgfolder, out_prefix_img+path.parse(imgfolder).name, ".svg")
-
-              saveSvgToFile(Array.isArray(obj.data["image/svg+xml"]) ? obj.data["image/svg+xml"].join('') : obj.data["image/svg+xml"], imgfolder + '/' + imgfile)
-              outtxt = `\n![](${path.basename(imgfolder)}/${imgfile})\n{ class="lineimg w-100 h-50"}\n\n`
+              let imgfile = getUniqueFilenameSync(imgfolder, out_prefix_img + path.parse(imgfolder).name, ".svg")
+              const fullpath = path.posix.join(imgfolder, imgfile)
+              const relativePath = path.posix.join(path.basename(imgfolder), imgfile)
+              const upath = encodeURI(relativePath)
+              saveSvgToFile(Array.isArray(obj.data["image/svg+xml"]) ? obj.data["image/svg+xml"].join('') : obj.data["image/svg+xml"], fullpath)
+              outtxt = `\n![](${upath})\n{ class="lineimg w-100 h-50"}\n\n`
             }
 
             if (obj.data["image/png"]) {
-              let imgfile = getUniqueFilenameSync(imgfolder, out_prefix_img+path.parse(imgfolder).name, ".png")
+              let imgfile = getUniqueFilenameSync(imgfolder, out_prefix_img + path.parse(imgfolder).name, ".png")
+              const fullpath = path.posix.join(imgfolder, imgfile)
+              const relativePath = path.posix.join(path.basename(imgfolder), imgfile)
+              const upath = encodeURI(relativePath)
 
-              saveBase64ToPNGFile(obj.data["image/png"], imgfolder + '/' + imgfile)
-              outtxt = `\n![](${path.basename(imgfolder)}/${imgfile} )\n{ class="lineimg w-100 h-50"}\n\n`
+              saveBase64ToPNGFile(obj.data["image/png"], fullpath)
+              outtxt = `\n![](${upath} )\n{ class="lineimg w-100 h-50"}\n\n`
             }
             out_images.push(outtxt);
           }
@@ -126,17 +121,11 @@ export function nb2md(nb: any, imgfolder: string): string {
       }
       if (out_stata.length > 0) {
         let outtxt = out_stata.join('');
-        // if (cell.metadata && cell.metadata.tags  && cell.metadata.tags.includes('hidesource')) {
-        //   if (!cell.metadata.tags.includes('hideoutput')) //輸出隱藏否
-        //     parts.push('```' + (lang || '') + '\n' + outtxt + '\n' + '```\n');
-        // } else {
-        //   if (cell.metadata && cell.metadata.tags  && !cell.metadata.tags.includes('hideoutput')) //輸出隱藏否
-        //     parts.push('{{< expand title="執行結果" incode=false >}}' + '\n' + '```' + (lang || '') + '\n' + outtxt + '\n' + '```\n' + '{{< /expand >}}');
-        // }
-         let isHideSource=false 
-          let codeBlock= '```' + (lang || '') + '\n' + outtxt + '\n' + '```\n';
+
+        let isHideSource = false
+        let codeBlock = '```' + (lang || '') + '\n' + outtxt + '\n' + '```\n';
         if (cell.metadata?.tags) {
-  
+
           if (!cell.metadata.tags.includes('hideoutput')) {
             isHideSource = cell.metadata.tags.includes('hidesource');
           }
@@ -145,41 +134,41 @@ export function nb2md(nb: any, imgfolder: string): string {
             parts.push(codeBlock);
           } else {
             // 顯示原始碼時：將輸出結果放入「執行結果」的折疊選單中
-            parts.push('{{< expand title="執行結果" incode=false >}}\n' + codeBlock + '{{< /expand >}}');  
+            parts.push('{{< expand title="執行結果" incode=false >}}\n' + codeBlock + '{{< /expand >}}');
           }
         } else {
           parts.push('{{< expand title="執行結果" incode=false >}}\n' + codeBlock + '{{< /expand >}}');
         }
 
-    
-    }
-    if (out_images.length > 0) {
-      parts.push(out_images.join(''))
-    }
-    /*
-          if (cell.outputs && cell.outputs.length>0) {
-            for (const outblock of cell.outputs) {
-              if (outblock.text && outblock.text.length>0){
-                let outtxt = outblock.text.join('')
-                //parts.push('```' + (lang || '') + '\n' + '{{< expand 輸出 >}}'+'\n'+ outtxt +'{{< /expand >}}'+'\n'+ '```\n');
-                parts.push( '{{< expand title="執行結果" incode=false >}}'+ '\n'+'```' + (lang || '')  +'\n'+ outtxt +'\n'+ '```\n'+'{{< /expand >}}');
+
+      }
+      if (out_images.length > 0) {
+        parts.push(out_images.join(''))
+      }
+      /*
+            if (cell.outputs && cell.outputs.length>0) {
+              for (const outblock of cell.outputs) {
+                if (outblock.text && outblock.text.length>0){
+                  let outtxt = outblock.text.join('')
+                  //parts.push('```' + (lang || '') + '\n' + '{{< expand 輸出 >}}'+'\n'+ outtxt +'{{< /expand >}}'+'\n'+ '```\n');
+                  parts.push( '{{< expand title="執行結果" incode=false >}}'+ '\n'+'```' + (lang || '')  +'\n'+ outtxt +'\n'+ '```\n'+'{{< /expand >}}');
+                }
+                if (outblock.data && outblock.data["image/svg+xml"]){
+                  let outtxt = outblock.data["image/svg+xml"].join('')
+                  parts.push(outtxt);
+                }
               }
-              if (outblock.data && outblock.data["image/svg+xml"]){
-                let outtxt = outblock.data["image/svg+xml"].join('')
-                parts.push(outtxt);
-              }
-            }
-          }    
-     */
+            }    
+       */
 
 
-  } else if (cell.cell_type === 'raw') {
-    const src = Array.isArray(cell.source) ? cell.source.join('') : cell.source;
-    parts.push(src.trim() + '\n');
+    } else if (cell.cell_type === 'raw') {
+      const src = Array.isArray(cell.source) ? cell.source.join('') : cell.source;
+      parts.push(src.trim() + '\n');
+    }
   }
-}
 
-return parts.join('\n');
+  return parts.join('\n');
 }
 
 export function convertIpynbFileToMd(inputPath: string, outputPath: string) {
