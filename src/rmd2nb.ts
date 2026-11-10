@@ -103,6 +103,19 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
   }
 }
 
+function parseOptionValue(v: string): any {
+  if (!v) return v;
+  const low = v.toLowerCase();
+  if (low === 'true' || low === 't') return true;
+  if (low === 'false' || low === 'f') return false;
+  // number?
+  const n = Number(v);
+  if (!Number.isNaN(n)) return n;
+  // strip quotes if present
+  const m = v.match(/^['"](.*)['"]$/);
+  if (m) return m[1];
+  return v;
+}
 
 export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)
@@ -169,8 +182,7 @@ export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?
     pendingMarkdown = [];
     return acell
   }
-  //note4 +1
-  //note5 -1
+
 
   //const dotask = await stata_collectcode();
   for (const node of tree.children) {
@@ -178,9 +190,9 @@ export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?
       const c = node as Code;
       // parse fenced code info by combining c.lang and c.meta into one info string
       const infoParts: string[] = [];
-      if (c.lang) infoParts.push(String(c.lang));
-      if ((c as any).meta) infoParts.push(String((c as any).meta));
-      const rawInfo = infoParts.join(' ').trim();
+      if (c.lang) infoParts.push(String(c.lang)); //c.lang例如:'{stata,echo=T,block.pre.class="ms-5.w-75"}'
+      if ((c as any).meta) infoParts.push(String((c as any).meta)); //這裡meta 不知道是甚麼,如果有也要推進來。❓
+      const rawInfo = infoParts.join(' ').trim(); //rawInfo '{stata,echo=T,block.pre.class="ms-5.w-75"}'
 
       // If the fence is NOT curly-braced (e.g. ```python), keep it as a fenced code block in markdown
       const isCurly = rawInfo.startsWith('{') && rawInfo.endsWith('}');
@@ -197,6 +209,23 @@ export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?
       let lang = '';
       let metadata: any = {};
 
+      /*
+        const tokens = chunk.paramStr.trim().split(/[\s,]+/).filter(Boolean);
+        const engineName = tokens[0]; 
+        
+        //chunk 參數處理
+        const currentOpts = new Map(opts_chunk); 
+        currentOpts.set('engineName',engineName)
+
+        for (let j = 1; j < tokens.length; j++) {
+            const [key, value] = tokens[j].split('=');
+            if (key && value) {
+                const parsedValue = ['true','t'].includes(value.toLowerCase()) ? true : value === 'false' ? false : value;
+                currentOpts.set(key, parsedValue);
+            }
+        }  
+            */    
+      
       if (info.length > 0) {
         // remove surrounding braces
         info = info.slice(1, -1).trim();
@@ -224,7 +253,7 @@ export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?
           }
         }
       }
-
+      
       //只有```{lang} 會到這裡
       let codeSource = (c.value || '') + '\n';
 
@@ -288,7 +317,7 @@ export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?
 
 
       } else {
-        //其他語言不處理,留著給ipynb處理
+        //其他語言,例如{js}{python}不處理,留著給ipynb處理
         cells.push({
           cell_type: 'code',
           execution_count: null,
@@ -308,19 +337,7 @@ export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?
     }
   }
 
-  function parseOptionValue(v: string): any {
-    if (!v) return v;
-    const low = v.toLowerCase();
-    if (low === 'true' || low === 't') return true;
-    if (low === 'false' || low === 'f') return false;
-    // number?
-    const n = Number(v);
-    if (!Number.isNaN(n)) return n;
-    // strip quotes if present
-    const m = v.match(/^['"](.*)['"]$/);
-    if (m) return m[1];
-    return v;
-  }
+
   flushMarkdown();
 
   return {

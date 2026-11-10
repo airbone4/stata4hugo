@@ -7,7 +7,7 @@ import { cmd_rmd2nb } from './cmd_rmd2nb.js'
 import { cmd_newnb } from './cmd_newnb.js'
 import { cmd_nb2md } from './cmd_nb2md.js'
 import { cmd_cleanmarkup } from './cmd_cleanmarkup.js';
-//import { knit } from './statatool/knitr.js';
+import { knit } from './statatool/knitr.js';
 
 
 //import * as knitr from './statatool/knitr.js';
@@ -170,19 +170,19 @@ export async function activate(context: vscode.ExtensionContext) {
 */
   //========== test ===========
   disposable = vscode.commands.registerCommand('extension.test', async (uri)=>{
-    // const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
-    // if (!targetUri) {
-    //   vscode.window.showErrorMessage('找不到可轉換的檔案！');
-    //   return;
-    // }
-    // //await cmd_rmd2nb(targetUri)
-    // const ext=path.parse(targetUri.fsPath).ext.toLowerCase();
-    // //const rmdPath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.Rmarkdown';    
-    // const text=fs.readFileSync(targetUri.fsPath,'utf8')
-    // const outpath=path.posix.join(path.parse(targetUri.fsPath).dir,path.parse(targetUri.fsPath).name) +".md" 
-    //  const resultHtml = await knit(text);
-    //  fs.writeFileSync(outpath,resultHtml,'utf8')
-    // //const ext = path.extname(aPath).toLowerCase();    
+    const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+    if (!targetUri) {
+      vscode.window.showErrorMessage('找不到可轉換的檔案！');
+      return;
+    }
+    //await cmd_rmd2nb(targetUri)
+    const ext=path.parse(targetUri.fsPath).ext.toLowerCase();
+    //const rmdPath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.Rmarkdown';    
+    const text=fs.readFileSync(targetUri.fsPath,'utf8')
+    const outpath=path.posix.join(path.parse(targetUri.fsPath).dir,path.parse(targetUri.fsPath).name) +".md" 
+     const resultHtml = await knit(text);
+     fs.writeFileSync(outpath,resultHtml,'utf8')
+    //const ext = path.extname(aPath).toLowerCase();    
   });
   context.subscriptions.push(disposable);
 

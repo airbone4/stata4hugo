@@ -21,6 +21,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src","test"],
-  "exclude": ["mynote" ]
+  "include": ["src","test", "mynote/unused/rmd2nb_xxx.ts"],
+  "exclude": [ ]
 }
