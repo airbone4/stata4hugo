@@ -97,20 +97,7 @@ export async function stata_engine(options) {
       console.error('Stata 執行失敗:', error.message);
       throw error;
     }
-    // try {
 
-    //   const { stdout, stderr } = execSync(
-    //     `"${enginePath}" ${command}`,
-    //     { env: options.engine_env }
-    //   );
-
-    //  output = (stdout ? `\n${stdout}` : '') + (stderr ? `\n${stderr}` : '');
-    // } catch (error) {
-    //   if (!options.error) {
-    //     throw error;
-    //   }
-    //   output = `Error in running command ${enginePath}`;
-    // }
 
     // Read log file if it exists
     if (options.engine === 'stata' && fs.existsSync(logFile)) {

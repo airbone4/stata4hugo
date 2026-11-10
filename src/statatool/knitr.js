@@ -1,25 +1,35 @@
 
+import { doStata,find_stata } from "./index.js";
+import * as fs from 'fs';
+import * as path from 'path';
 
 const knit_engines = new Map();
 const opts_chunk = new Map();
 const knit_hooks = new Map();
 
+
 function engine_output(options, code, out) {
     return { options, code, out };
 }
 
+function isObjectAndNotMap(value) {
+  return (
+    Object.prototype.toString.call(value) === '[object Object]' && 
+    !(value instanceof Map)
+  );
+}
 // 2. 設定預設的 Chunks 參數 (opts_chunk)
 opts_chunk.set('echo', true);    // 是否顯示原始程式碼
 opts_chunk.set('eval', true);    // 是否執行程式碼
 opts_chunk.set('results', 'show'); // 'show' 或 'hide'
 
-knit_engines.set('stata', async (code) => {
-  //const rst = await doStata(codeSource, workdir, metadata);  //mynote xxx
-  return code;
+knit_engines.set('stata', async (code,chunkParam={}) => {
+  const rst = await doStata(code, chunkParam);  
+  return rst;
 });
 
 // compiler.worker.js 內完美適應所有情況的 JS 沙盒引擎
-knit_engines.set('js', async (code) => {
+knit_engines.set('js', async (code,chunkParam={}) => {
     let backupGlobalConsole = globalThis.console; // 備份全域 console
     try {
         let logs = [];
@@ -76,7 +86,7 @@ knit_engines.set('js', async (code) => {
             textOutput = typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result);
         }
 
-        return textOutput || "[執行成功，無輸出]";
+        return {txt:textOutput || "[執行成功，無輸出]"};
         
     } catch (err) {
         globalThis.console = backupGlobalConsole;
@@ -117,27 +127,31 @@ knit_hooks.set('output', (result,options) => {
 
 // 🚀 為不同的引擎註冊專屬的輸出格式 (客製化專屬的 Markdown 格式)
 knit_hooks.set('output:js', (result,options) => {
+  
+  const outtxt= isObjectAndNotMap(result)?result.txt:result;
   let rst=""
-  rst = `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options.get('engineName')}\n${result}\n\`\`\`\n{{< /expand >}}\n\n`;
+  rst = `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options.get('engineName')}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`;
   return rst
 })
 knit_hooks.set('output:stata', (result,options) => {
-  return `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options.get('engineName')}\n${result}\n\`\`\`\n{{< /expand >}}\n\n`
+  const outtxt= isObjectAndNotMap(result)?result.txt:result;
+  return `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options.get('engineName')}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`
 });
 knit_hooks.set('output:python', (result,options) => {
- return `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options.get('engineName')}\n${result}\n\`\`\`\n{{< /expand >}}\n\n`
+ const outtxt= isObjectAndNotMap(result)?result.txt:result;
+ return `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options.get('engineName')}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`
 });
 
 
 // 5. 核心 Knit 編譯器函數
-async function knit(rawMarkdown) {
+async function knit(docpath) {
     //const chunkRegex = /```\(\{([^}]+)\}[\r]\)?\n([\s\(\S\)]*?)\([\r]\)?\n```/g;
     //chunkRegex 的作用是抽出下面的內容
     // ```{stata,echo=T,block.pre.class="ms-5.w-75"}
     // sysuse auto
     // scatter price weight
     // ```    
-    
+    const rawMarkdown = fs.readFileSync(docpath,'utf8')
     const chunkRegex = /```\{([^}]+)\}[\r]?\n([\s\(\S\)]*?)[\r]?\n```/g
     let markdownOutput = rawMarkdown; // 重新命名變數以符合 Markdown 輸出語意
     let match;
@@ -173,7 +187,9 @@ async function knit(rawMarkdown) {
                 currentOpts.set(key, parsedValue);
             }
         }
-
+        
+        
+        currentOpts.set('workdir',path.parse(docpath).dir)
         let chunkMarkdown = ''; // 累積當前區塊轉換出來的 Markdown 文字
 
         // 🟢 處理 Hook 1: 原始碼顯示 (傳入語言名稱 engineName 以獲得高亮)
@@ -187,12 +203,12 @@ async function knit(rawMarkdown) {
         if (currentOpts.get('eval') === true && knit_engines.has(engineName)) {
             const engine = knit_engines.get(engineName);
             //===========🟢🟢執行🟢🟢--------------
-            const rawResult = await engine(chunk.code); 
+            const rawResult = await engine(chunk.code,currentOpts); 
             
             if (currentOpts.get('results') !== 'hide') {
                 
                 const outputHook =  knit_hooks.get('output');
-                const xx=outputHook(rawResult,currentOpts)  
+                
                 chunkMarkdown +=   outputHook(rawResult,currentOpts)  
  
             }

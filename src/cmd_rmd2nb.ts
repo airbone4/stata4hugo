@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 
-import {knitr,find_stata } from './statatool/index.js'
+import {getStataPath } from './statatool/index.js'
 
 
 export async function cmd_rmd2nb (aPath:string)  {
@@ -28,14 +28,30 @@ export async function cmd_rmd2nb (aPath:string)  {
       const workdir = path.dirname(outPath);
       const profilepath= path.join(workdir,'profile.do')
     try {
-        // Find Stata executable
-      const stataexe = await find_stata();
-      if (stataexe !== "") {
+      //  // Find Stata executable
+      // const stataexe = await find_stata();
+      // if (stataexe !== "") {
      
-        knitr.opts_chunk.set('engine_path' , { stata: stataexe });
-        knitr.opts_chunk.set('engine' , "stata");
-        knitr.opts_chunk.set('workdir' , workdir);
+      //   knitr.opts_chunk.set('engine_path' , { stata: stataexe });
+      //   knitr.opts_chunk.set('engine' , "stata");
+      //   knitr.opts_chunk.set('workdir' , workdir);
 
+      //   if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
+      //     //console.log("Found a 'sysprofile.do'");
+      //     vscode.window.showWarningMessage("Found a 'sysprofile.do', will be executed first");
+      //   }
+      //   if (fs.existsSync(path.join(path.dirname(path.dirname(stataexe)), 'profile.do'))) {
+
+      //     const wmsg = "Found a 'profile.do' in the STATA executable directory.\n" +
+      //       "  This prevents 'collectcode' from working properly.\n" +
+      //       "  Please rename this 'sysprofile.do'."
+      //     vscode.window.showWarningMessage(wmsg)
+      //   }
+      // } else {
+      //   vscode.window.showWarningMessage("No Stata executable found.");
+      // }
+        const stataexe=getStataPath()
+      if(stataexe!=="")  {
         if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
           //console.log("Found a 'sysprofile.do'");
           vscode.window.showWarningMessage("Found a 'sysprofile.do', will be executed first");
@@ -50,6 +66,8 @@ export async function cmd_rmd2nb (aPath:string)  {
       } else {
         vscode.window.showWarningMessage("No Stata executable found.");
       }
+
+
 
       //這是rmarkdown 中所在的目錄
 

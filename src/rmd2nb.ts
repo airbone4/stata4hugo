@@ -256,9 +256,9 @@ export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?
       
       //只有```{lang} 會到這裡
       let codeSource = (c.value || '') + '\n';
-
+      metadata['workdir']=workdir
       if ((lang || '').toLowerCase() === 'stata') {
-        const rst = await doStata(codeSource, workdir, metadata);
+        const rst = await doStata(codeSource,  metadata);
 
         //原來的程式碼
         let rstnode: any = {};

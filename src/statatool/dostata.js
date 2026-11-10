@@ -10,6 +10,22 @@ import { stata_engine } from './stata_engine.js';
 import { stataoutput } from './stataoutputhook.js';
 
 
+const stataexe = await find_stata();
+if (stataexe !== "") {
+
+  knitr.opts_chunk.set('engine_path', { stata: stataexe });
+  knitr.opts_chunk.set('engine', "stata");
+}  
+
+
+function getStataPath()
+{
+
+return knitr.opts_chunk?.['stata'] || "";
+
+}
+
+
 function predo(afolder = '') {
 
   const toolpath = afolder === ''
@@ -33,7 +49,7 @@ foreach item in \`r(list)'{
 `
   return rst
 }
-export async function doStata(stataCode, workdir, chunkParam) {
+async function doStata(stataCode,  chunkParam) {
   let chunkOpt;
   if (chunkParam === null || typeof chunkParam !== 'object') {
     throw new TypeError("預期參數必須是一個 Map 或是一般物件！");
@@ -52,16 +68,18 @@ export async function doStata(stataCode, workdir, chunkParam) {
     knitr.opts_chunk.set('code', stataCode.split("\n"));
 
     // savedo: 執行的暫存檔要不要留著,如果要留要給個label否則就是undefiend.do
-    knitr.opts_chunk.set('savedo', chunkParam.savedo ? chunkParam.savedo : false);
-    knitr.opts_chunk.set('error', chunkParam.error ? chunkParam.error : false);
+    knitr.opts_chunk.set('savedo', chunkOpt.get('savedo') ? chunkOpt.get('savedo') : false);
+    knitr.opts_chunk.set('error', chunkOpt.get('error') ? chunkOpt.get('error') : false);
 
     // 指令碼要不要留在結果中,和log file 無關
-    knitr.opts_chunk.set('cleanlog', chunkParam.cleanlog ? chunkParam.cleanlog : false);
-    knitr.opts_chunk.set('comment', chunkParam.comment ? chunkParam.comment : false);
-    knitr.opts_chunk.set('collectcode', chunkParam.collectcode); // todo :沒必要的這行
+    knitr.opts_chunk.set('cleanlog', chunkOpt.get('cleanlog') ? chunkOpt.get('cleanlog') : false);
+    knitr.opts_chunk.set('comment', chunkOpt.get('comment') ? chunkOpt.get('comment') : false);
+    knitr.opts_chunk.set('collectcode', chunkOpt.get('collectcode')) // todo :沒必要的這行
+    knitr.opts_chunk.set('workdir',chunkOpt.get('workdir'))
 
     // 💡 knit_engines 也是 Map，改用 .set()
-    knitr.knit_engines.set('stata', stata_engine);
+    //dddd
+    //knitr.knit_engines.set('stata', stata_engine);
 
     // 主要工作
     // 💡 取值部分（原本的 .workdir、.collectcode、.code）改為 .get()
@@ -78,7 +96,7 @@ export async function doStata(stataCode, workdir, chunkParam) {
     let posttxt = postdo(path.join(import.meta.dirname, '../../../temp'))
 
     //整合原來的程式碼 + posttxt
-    // 💡 重新設定 code 陣列，使用 .set()
+    // 💡 重新設定 code 陣列，使用 .set(), precode + rsw_code +post_code
     knitr.opts_chunk.set('code', [...pretxt.split('\n'), ...currentCode, ...posttxt.split('\n')]);
 
     // 💡 傳遞參數給 stata_engine，因為原本預期傳入物件，
@@ -102,3 +120,5 @@ export async function doStata(stataCode, workdir, chunkParam) {
     // process.exit(1);
   }
 }
+
+export {getStataPath,doStata}

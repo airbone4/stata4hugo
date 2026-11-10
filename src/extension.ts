@@ -10,9 +10,6 @@ import { cmd_cleanmarkup } from './cmd_cleanmarkup.js';
 import { knit } from './statatool/knitr.js';
 
 
-//import * as knitr from './statatool/knitr.js';
-//import { find_stata } from './statatool/find_stata.js';
-import { knitr, find_stata } from './statatool/index.js';
 
 
 
@@ -178,9 +175,9 @@ export async function activate(context: vscode.ExtensionContext) {
     //await cmd_rmd2nb(targetUri)
     const ext=path.parse(targetUri.fsPath).ext.toLowerCase();
     //const rmdPath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.Rmarkdown';    
-    const text=fs.readFileSync(targetUri.fsPath,'utf8')
+    
     const outpath=path.posix.join(path.parse(targetUri.fsPath).dir,path.parse(targetUri.fsPath).name) +".md" 
-     const resultHtml = await knit(text);
+     const resultHtml = await knit(targetUri.fsPath);
      fs.writeFileSync(outpath,resultHtml,'utf8')
     //const ext = path.extname(aPath).toLowerCase();    
   });
