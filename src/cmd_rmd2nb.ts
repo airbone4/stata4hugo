@@ -5,6 +5,7 @@ import * as fs from 'fs';
 
 
 import {getStataPath } from './statatool/index.js'
+import { profile } from 'console';
 
 
 export async function cmd_rmd2nb (aPath:string)  {
@@ -53,7 +54,7 @@ export async function cmd_rmd2nb (aPath:string)  {
         const stataexe=getStataPath()
       if(stataexe!=="")  {
         if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
-          //console.log("Found a 'sysprofile.do'");
+          
           vscode.window.showWarningMessage("Found a 'sysprofile.do', will be executed first");
         }
         if (fs.existsSync(path.join(path.dirname(path.dirname(stataexe)), 'profile.do'))) {
@@ -74,7 +75,7 @@ export async function cmd_rmd2nb (aPath:string)  {
       
       if (fs.existsSync(profilepath)) {
         originalProfile = fs.readFileSync(profilepath, 'utf8');
-        vscode.window.showWarningMessage(`Found an existing 'profile.do'\n${originalProfile}`);
+        vscode.window.showWarningMessage(`Found an existing '${profilepath}'.\n${originalProfile||"empty content"}`);
 
       }      
 

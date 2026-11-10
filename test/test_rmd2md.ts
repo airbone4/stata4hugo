@@ -48,7 +48,7 @@ export async function testmd2nb(workdir,doc){
           console.log(wmsg)
         }
       } else {
-        console.log("No Stata executable found.");
+        console.log("No Stata executable found.xxx");
       }
        
       const profilepath= path.join(workdir,'profile.do')

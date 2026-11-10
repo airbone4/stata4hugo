@@ -1,11 +1,11 @@
-
 import { doStata,find_stata } from "./index.js";
 import * as fs from 'fs';
 import * as path from 'path';
 
-const knit_engines = new Map();
-const opts_chunk = new Map();
-const knit_hooks = new Map();
+// 將 Map 全部改為一般物件
+const knit_engines = {};
+const opts_chunk = {};
+const knit_hooks = {};
 
 
 function engine_output(options, code, out) {
@@ -18,18 +18,19 @@ function isObjectAndNotMap(value) {
     !(value instanceof Map)
   );
 }
-// 2. 設定預設的 Chunks 參數 (opts_chunk)
-opts_chunk.set('echo', true);    // 是否顯示原始程式碼
-opts_chunk.set('eval', true);    // 是否執行程式碼
-opts_chunk.set('results', 'show'); // 'show' 或 'hide'
 
-knit_engines.set('stata', async (code,chunkParam={}) => {
+// 2. 設定預設的 Chunks 參數 (opts_chunk 物件操作)
+opts_chunk['echo'] = true;    // 是否顯示原始程式碼
+opts_chunk['eval'] = true;    // 是否執行程式碼
+opts_chunk['results'] = 'show'; // 'show' 或 'hide'
+
+knit_engines['stata'] = async (code, chunkParam = {}) => {
   const rst = await doStata(code, chunkParam);  
   return rst;
-});
+};
 
 // compiler.worker.js 內完美適應所有情況的 JS 沙盒引擎
-knit_engines.set('js', async (code,chunkParam={}) => {
+knit_engines['js'] = async (code, chunkParam = {}) => {
     let backupGlobalConsole = globalThis.console; // 備份全域 console
     try {
         let logs = [];
@@ -92,75 +93,67 @@ knit_engines.set('js', async (code,chunkParam={}) => {
         globalThis.console = backupGlobalConsole;
         return `JS (ESM Sandbox) Error:\n${err.message}`;
     }
-});
+};
 
 // 模擬 Python 引擎
-knit_engines.set('python', async (code) => {
+knit_engines['python'] = async (code) => {
     return `[Python 模擬輸出] 執行了：\n${code}`;
-});
+};
 
 // ==========================================
 // 🌟 需求 1 & 2：優化 Hooks 註冊（完全 Markdown 化）
 // ==========================================
 
 // 預設全域鉤子：自動帶入語言標籤 (options) 確保 Markdown 高亮
-knit_hooks.set('source', (code, options ) => {
-  let result=""
-  const shook=`source:${options.get('engineName')}`
-  if (knit_hooks.has(shook))
-    result = knit_hooks.get(shook)(code,options)
+knit_hooks['source'] = (code, options) => {
+  let result = "";
+  const shook = `source:${options['engineName']}`;
+  if (shook in knit_hooks)
+    result = knit_hooks[shook](code, options);
   else
-  result= `\`\`\`${options.get('engineName')}\n${code}\n\`\`\`\n\n`
-  return result
-});
+    result = `\`\`\`${options['engineName']}\n${code}\n\`\`\`\n\n`;
+  return result;
+};
 
-knit_hooks.set('output', (result,options) => {
-  let rst=""
+knit_hooks['output'] = (result, options) => {
+  let rst = "";
   // 🌟 核心邏輯：優先找特定引擎的 Hook（如 output:js），找不到才用全域預設的 output
-  const ohook=`output:${options.get('engineName')}`
-  if (knit_hooks.has(ohook))
-    rst = knit_hooks.get(ohook)(result,options)
+  const ohook = `output:${options['engineName']}`;
+  if (ohook in knit_hooks)
+    rst = knit_hooks[ohook](result, options);
   else
-    rst= `\`\`\`${options.get('engineName')?options.get('engineName'):""}\n${result}\n\`\`\`\n\n`
-   return rst
-})
+    rst = `\`\`\`${options['engineName'] ? options['engineName'] : ""}\n${result}\n\`\`\`\n\n`;
+   return rst;
+};
 
 // 🚀 為不同的引擎註冊專屬的輸出格式 (客製化專屬的 Markdown 格式)
-knit_hooks.set('output:js', (result,options) => {
-  
-  const outtxt= isObjectAndNotMap(result)?result.txt:result;
-  let rst=""
-  rst = `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options.get('engineName')}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`;
-  return rst
-})
-knit_hooks.set('output:stata', (result,options) => {
-  const outtxt= isObjectAndNotMap(result)?result.txt:result;
-  return `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options.get('engineName')}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`
-});
-knit_hooks.set('output:python', (result,options) => {
- const outtxt= isObjectAndNotMap(result)?result.txt:result;
- return `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options.get('engineName')}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`
-});
+knit_hooks['output:js'] = (result, options) => {
+  const outtxt = isObjectAndNotMap(result) ? result.txt : result;
+  let rst = "";
+  rst = `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options['engineName']}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`;
+  return rst;
+};
+
+knit_hooks['output:stata'] = (result, options) => {
+  const outtxt = isObjectAndNotMap(result) ? result.txt : result;
+  return `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options['engineName']}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`;
+};
+
+knit_hooks['output:python'] = (result, options) => {
+  const outtxt = isObjectAndNotMap(result) ? result.txt : result;
+  return `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options['engineName']}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`;
+};
 
 
 // 5. 核心 Knit 編譯器函數
 async function knit(docpath) {
-    //const chunkRegex = /```\(\{([^}]+)\}[\r]\)?\n([\s\(\S\)]*?)\([\r]\)?\n```/g;
-    //chunkRegex 的作用是抽出下面的內容
-    // ```{stata,echo=T,block.pre.class="ms-5.w-75"}
-    // sysuse auto
-    // scatter price weight
-    // ```    
     const rawMarkdown = fs.readFileSync(docpath,'utf8')
-    const chunkRegex = /```\{([^}]+)\}[\r]?\n([\s\(\S\)]*?)[\r]?\n```/g
-    let markdownOutput = rawMarkdown; // 重新命名變數以符合 Markdown 輸出語意
+    const chunkRegex = /```\(\{([^}]+)\}[\r]\)?\n([\s\(\S\)]*?)\([\r]\)?\n```/g
+    let markdownOutput = rawMarkdown; 
     let match;
 
     const chunksToProcess = [];
     while ((match = chunkRegex.exec(rawMarkdown)) !== null) {
-    // 因為使用了 ‼️/g 全域匹配，chunkRegex.exec() 每次被呼叫時，
-    // 都會從上一次找到的位置後面繼續往下找，直到找不到了返回 null。
-    //0 是全部,1 是 stata,echo=T,block.pre.class="ms-5.w-75" , 3 是程式碼  
         chunksToProcess.push({
             fullMatch: match[0],
             paramStr: match[1],
@@ -172,55 +165,48 @@ async function knit(docpath) {
     for (let i = chunksToProcess.length - 1; i >= 0; i--) {
         const chunk = chunksToProcess[i];
         
-        // 使用 /[\s,]+/ 可以過濾掉逗號與空格產生的空字串
         const tokens = chunk.paramStr.trim().split(/[\s,]+/).filter(Boolean);
         const engineName = tokens[0]; 
         
-        //chunk 參數處理
-        const currentOpts = new Map(opts_chunk); 
-        currentOpts.set('engineName',engineName)
+        // chunk 參數處理：改用物件淺拷貝與屬性指派
+        const currentOpts = { ...opts_chunk }; 
+        currentOpts['engineName'] = engineName;
 
         for (let j = 1; j < tokens.length; j++) {
             const [key, value] = tokens[j].split('=');
             if (key && value) {
                 const parsedValue = ['true','t'].includes(value.toLowerCase()) ? true : value === 'false' ? false : value;
-                currentOpts.set(key, parsedValue);
+                currentOpts[key] = parsedValue;
             }
         }
         
-        
-        currentOpts.set('workdir',path.parse(docpath).dir)
-        let chunkMarkdown = ''; // 累積當前區塊轉換出來的 Markdown 文字
+        currentOpts['workdir'] = path.parse(docpath).dir;
+        let chunkMarkdown = ''; 
 
-        // 🟢 處理 Hook 1: 原始碼顯示 (傳入語言名稱 engineName 以獲得高亮)
-        if (currentOpts.get('echo') === true) {
-            const sourceHook = knit_hooks.get('source');
-            const xx= sourceHook(chunk.code, currentOpts)
-            chunkMarkdown +=  sourceHook(chunk.code, currentOpts)
+        // 🟢 處理 Hook 1: 原始碼顯示
+        if (currentOpts['echo'] === true) {
+            const sourceHook = knit_hooks['source'];
+            chunkMarkdown += sourceHook(chunk.code, currentOpts);
         }
 
         // 🟢 Engine 執行程式碼 與 Hook 2: 執行與專屬輸出格式
-        if (currentOpts.get('eval') === true && knit_engines.has(engineName)) {
-            const engine = knit_engines.get(engineName);
-            //===========🟢🟢執行🟢🟢--------------
-            const rawResult = await engine(chunk.code,currentOpts); 
+        if (currentOpts['eval'] === true && engineName in knit_engines) {
+            const engine = knit_engines[engineName];
+            // ===========🟢🟢執行🟢🟢--------------
+            const rawResult = await engine(chunk.code, currentOpts); 
             
-            if (currentOpts.get('results') !== 'hide') {
-                
-                const outputHook =  knit_hooks.get('output');
-                
-                chunkMarkdown +=   outputHook(rawResult,currentOpts)  
- 
+            if (currentOpts['results'] !== 'hide') {
+                const outputHook = knit_hooks['output'];
+                chunkMarkdown += outputHook(rawResult, currentOpts);  
             }
-        } else if (currentOpts.get('eval') === true && !knit_engines.has(engineName)) {
-            chunkMarkdown = chunk.fullMatch + '\n\n'; // 沒對應引擎時保持原樣
+        } else if (currentOpts['eval'] === true && !(engineName in knit_engines)) {
+            chunkMarkdown = chunk.fullMatch + '\n\n'; 
         }
 
         // 將原區塊替換為編譯後的 Markdown 內容
         markdownOutput = markdownOutput.slice(0, chunk.index) + chunkMarkdown + markdownOutput.slice(chunk.index + chunk.fullMatch.length);
     }
 
-    // 🌟 需求 2：不要再透過 marked.js 轉成 HTML，直接回傳純粹處理好的 Markdown 字串
     return markdownOutput;
 }
 
@@ -230,4 +216,3 @@ export {
     knit_hooks,
     knit
 };
-
