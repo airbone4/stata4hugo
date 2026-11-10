@@ -45,6 +45,10 @@
       {
         "command": "extension.resetIpynb2mdSettings",
         "title": "Jupyter: Reset ipynb2md Overwrite Prompt Settings"
+      },
+      {
+        "command": "extension.test",
+        "title": "Hugo tool: test"
       }
     ],
     "keybindings": [

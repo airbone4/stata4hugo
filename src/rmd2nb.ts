@@ -6,6 +6,7 @@ import * as fs from 'fs'
 import { doStata } from './statatool/dostata.js'
 
 function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: 'gfm' | 'pandoc' }): string {
+
   // Simple serializer for common block nodes to markdown source
   switch (node.type) {
     case 'paragraph':
@@ -101,6 +102,7 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
       return '';
   }
 }
+
 
 export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)

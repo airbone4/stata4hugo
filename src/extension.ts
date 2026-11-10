@@ -2,13 +2,12 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { rmd2nb } from './rmd2nb.js';
-import { nb2md } from './nb2md.js';
+
 import { cmd_rmd2nb } from './cmd_rmd2nb.js'
 import { cmd_newnb } from './cmd_newnb.js'
 import { cmd_nb2md } from './cmd_nb2md.js'
 import { cmd_cleanmarkup } from './cmd_cleanmarkup.js';
-
+//import { knit } from './statatool/knitr.js';
 
 
 //import * as knitr from './statatool/knitr.js';
@@ -169,15 +168,32 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(disposable3);
 */
+  //========== test ===========
+  disposable = vscode.commands.registerCommand('extension.test', async (uri)=>{
+    // const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+    // if (!targetUri) {
+    //   vscode.window.showErrorMessage('找不到可轉換的檔案！');
+    //   return;
+    // }
+    // //await cmd_rmd2nb(targetUri)
+    // const ext=path.parse(targetUri.fsPath).ext.toLowerCase();
+    // //const rmdPath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.Rmarkdown';    
+    // const text=fs.readFileSync(targetUri.fsPath,'utf8')
+    // const outpath=path.posix.join(path.parse(targetUri.fsPath).dir,path.parse(targetUri.fsPath).name) +".md" 
+    //  const resultHtml = await knit(text);
+    //  fs.writeFileSync(outpath,resultHtml,'utf8')
+    // //const ext = path.extname(aPath).toLowerCase();    
+  });
+  context.subscriptions.push(disposable);
 
-  // 註冊指令，名稱要與 package.json 一致
+  //=========== 建立新的notebook ===========
   disposable = vscode.commands.registerCommand('extension.newnb', cmd_newnb);
   context.subscriptions.push(disposable);
 
-  // 清潔段落
+  // ========== 清潔段落 ===========
   disposable = vscode.commands.registerCommand('extension.cleanmarkup', cmd_cleanmarkup);
   context.subscriptions.push(disposable);
-  //command: 重設取消詢問
+  //========== 重設取消詢問 ===========
   disposable = vscode.commands.registerCommand('extension.resetIpynb2mdSettings', async () => {
     // 將 globalState 的儲存值改回 false（或者設定為 undefined 來徹底移除該鍵值）
     await context.globalState.update('ipynb2md.skipOverwritePrompt', false);

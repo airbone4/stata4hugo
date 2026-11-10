@@ -36,6 +36,7 @@ return rst
 export async function doStata(stataCode, workdir, metadata) {
   
   try {
+    const chunkOpt=new Map(metadata)
     // 💡 已將原本的物件點號賦值（.key = ...）改為 Map 的 .set() 方法
     knitr.opts_chunk.set('code', stataCode.split("\n"));
     

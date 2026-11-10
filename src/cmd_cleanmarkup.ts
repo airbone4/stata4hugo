@@ -33,7 +33,7 @@ export function cmd_cleanmarkup()  {
                 updatedText = updatedText.replace(/\\\^/g, '\\hat');
                 updatedText = updatedText.replace(/我們/g, '');
 
-                const regex = /(python|R|stata|text)[\r]?[\n]([\s\S]*?[\r]?[\n])請謹慎使用程式碼。/g;
+                const regex = /(python|R|stata|text|javascript)[\r]?[\n]([\s\S]*?[\r]?[\n])請謹慎使用程式碼。/g;
 
                 // 使用 replaceAll 進行代換
                 // p0 是完整匹配的字串，p1 是第一個捕獲組 (Group 1)

@@ -22,5 +22,5 @@
     "skipLibCheck": true
   },
   "include": ["src","test"],
-  "exclude": [ ]
+  "exclude": ["mynote" ]
 }
