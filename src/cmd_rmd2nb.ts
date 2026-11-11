@@ -21,7 +21,8 @@ export async function cmd_rmd2nb (aPath:string)  {
     const text=fs.readFileSync(aPath,'utf8')
     const ext = path.extname(aPath).toLowerCase();
     if (!['.md', '.rmd', '.rmarkdown'].includes(ext)) {
-      vscode.window.showWarningMessage('File does not have a .md or .rmd extension, attempting conversion anyway.');
+      vscode.window.showWarningMessage('File does not have a .md or .rmd extension, stop.');
+      return
     }
 
     let originalProfile = ''
@@ -78,9 +79,10 @@ export async function cmd_rmd2nb (aPath:string)  {
         vscode.window.showWarningMessage(`Found an existing '${profilepath}'.\n${originalProfile||"empty content"}`);
 
       }      
-
-
-      const nb = await rmd2nb(text, workdir);
+//dddd1
+let p={workdir:`${workdir}`, 
+       imgdir:`${path.join(path.parse(outPath).dir,path.parse(outPath).name+'.files')}`};
+      const nb = await rmd2nb(text,  p);
 
 
 

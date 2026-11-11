@@ -117,10 +117,11 @@ function parseOptionValue(v: string): any {
   return v;
 }
 
-export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
+export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)
-
-
+  //dddd1
+  const workdir=env['workdir']
+  const imgdir=env['imgdir']
   let yamlFront = '';
   let restText = text;
   if (text.startsWith('---')) {
@@ -257,6 +258,8 @@ export async function rmd2nb(text: string, workdir?: string, opts?: { listStyle?
       //只有```{lang} 會到這裡
       let codeSource = (c.value || '') + '\n';
       metadata['workdir']=workdir
+      //dddd1
+      metadata['imgdir']=imgdir
       if ((lang || '').toLowerCase() === 'stata') {
         const rst = await doStata(codeSource,  metadata);
 

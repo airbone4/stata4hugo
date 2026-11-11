@@ -14,11 +14,10 @@ const stataexe = await find_stata();
 if (stataexe !== "") {
   knitr.opts_chunk['engine_path'] = { stata: stataexe };
   knitr.opts_chunk['engine'] = "stata";
-}  
+}
 
 
-function getStataPath()
-{
+function getStataPath() {
   return knitr.opts_chunk?.engine_path?.['stata'] || "";
 }
 
@@ -34,26 +33,27 @@ function predo(afolder = '') {
   `
   return rst
 }
+//dddd1 postdo 圖形加底線
 function postdo(adir) {
   const rst = `//<<- post ->>
 graph dir
 return list
 foreach item in \`r(list)'{
-  graph export ${adir}/\`item'.svg, replace name(\`item')
+  graph export ${adir}/_\`item'.svg, replace name(\`item')
   
 }
 `
   return rst
 }
-const defaultOption={
-  savedo:false,
-  error:false,
-  cleanlog:false,
-  comment:false,
-  collectcode:false
-  
+const defaultOption = {
+  savedo: false,
+  error: false,
+  cleanlog: false,
+  comment: false,
+  collectcode: false
+
 }
-async function doStata(stataCode,  chunkParam) {
+async function doStata(stataCode, chunkParam) {
   let chunkOpt;
   if (chunkParam === null || typeof chunkParam !== 'object') {
     throw new TypeError("預期參數必須是一個一般物件！");
@@ -67,41 +67,30 @@ async function doStata(stataCode,  chunkParam) {
       chunkOpt = { ...chunkParam };
     }
 
-    // 將原本的 Map .set() 方法改為物件屬性賦值
-    knitr.opts_chunk['code'] = stataCode.split("\n");
-
-    // savedo: 執行的暫存檔要不要留著,如果要留要給個label否則就是undefiend.do
-    knitr.opts_chunk['savedo'] = chunkOpt['savedo'] ? chunkOpt['savedo'] : false;
-    knitr.opts_chunk['error'] = chunkOpt['error'] ? chunkOpt['error'] : false;
-
-    // 指令碼要不要留在結果中,和log file 無關
-    knitr.opts_chunk['cleanlog'] = chunkOpt['cleanlog'] ? chunkOpt['cleanlog'] : false;
-    knitr.opts_chunk['comment'] = chunkOpt['comment'] ? chunkOpt['comment'] : false;
-    knitr.opts_chunk['collectcode'] = chunkOpt['collectcode']; // todo :沒必要的這行
-    knitr.opts_chunk['workdir'] = chunkOpt['workdir'];
-
-    // 主要工作
-    // 取值部分改為物件屬性讀取
-    const currentWorkdir = knitr.opts_chunk['workdir'];
-    const currentCollectCode = knitr.opts_chunk['collectcode'];
-    const currentCode = knitr.opts_chunk['code'];
-
-    fs.appendFileSync(
-      path.join(currentWorkdir, 'profile.do'),
-      currentCollectCode ? currentCode.join('\n') + '\n' : '\n'
-    );
+  
+    chunkOpt = { ...knitr.opts_chunk, ...defaultOption }
+    chunkOpt = { ...chunkOpt, ...chunkParam }
+ 
+    const rawcode = typeof stataCode === "string" ? stataCode.split("\n") : stataCode;
+    if (chunkOpt['collectcode']) {
+      fs.appendFileSync(
+        path.join(chunkOpt['workdir'], 'profile.do'),
+        rawcode.join('\n') + '\n'
+      );
+    }
 
     let pretxt = predo()
-    let posttxt = postdo(path.join(import.meta.dirname, '../../../temp'))
+    //dddd1 check
+    //let posttxt = postdo(path.join(import.meta.dirname, '../../../temp'))
+    if (!fs.existsSync(chunkParam.imgdir))
+       fs.mkdirSync(chunkParam.imgdir)
+    let posttxt = postdo( chunkParam.imgdir)
 
-    // 整合原來的程式碼 + posttxt
-    knitr.opts_chunk['code'] = [...pretxt.split('\n'), ...currentCode, ...posttxt.split('\n')];
+    // 整合原來的程式碼 pretxt+ rawcode + posttxt
+    chunkOpt['code'] = [...pretxt.split('\n'), ...rawcode, ...posttxt.split('\n')];
 
-    // 直接傳入一般物件 knitr.opts_chunk
-    const rst = await stata_engine(knitr.opts_chunk);
-
-    // 傳入一般物件 knitr.opts_chunk
-    const final_rst = stataoutput(rst.output.split("\n"), knitr.opts_chunk);
+    const rst = await stata_engine(chunkOpt);
+    const final_rst = stataoutput(rst.output.split("\n"), chunkOpt);
 
     return {
       txt: Array.isArray(final_rst) ? final_rst.join('\n') : final_rst,
@@ -112,4 +101,4 @@ async function doStata(stataCode,  chunkParam) {
   }
 }
 
-export {getStataPath,doStata}
+export { getStataPath, doStata }

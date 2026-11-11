@@ -92,7 +92,7 @@ export async function stata_engine(options) {
       postrst = postrst.replace(/[\r]?\n>\s?/g, ''); 
       logContent = lines.slice(0, aend).join('\n')
       output = logContent + output;
-
+      //dddd1 影像抽取
       regex = /file\s+(.*?)\s+saved\s+as\s+SVG\s+format/gi;
       imglist = [...postrst.matchAll(regex)].map(match => match[1]);
     }
