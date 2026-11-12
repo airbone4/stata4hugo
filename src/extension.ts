@@ -7,7 +7,7 @@ import { cmd_rmd2nb } from './cmd_rmd2nb.js'
 import { cmd_newnb } from './cmd_newnb.js'
 import { cmd_nb2md } from './cmd_nb2md.js'
 import { cmd_cleanmarkup } from './cmd_cleanmarkup.js';
-import { knit } from './statatool/knitr.js';
+import {knitr,parseIO} from './statatool/index.js';
 
 
 
@@ -44,12 +44,26 @@ function getAllFolders(dirPath: string, folderList: string[] = []): string[] {
 export async function activate(context: vscode.ExtensionContext) {
 
   // 指令1: 轉 md/rmd to ipynb
-  let disposable = vscode.commands.registerCommand('extension.rmd2ipynb', async(uri)=>{
+  let disposable = vscode.commands.registerCommand('extension.rmd2ipynb', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
       return;
-    }    
+    }
+    const tmp = parseIO(targetUri.fsPath)
+
+    const imgdirUri = vscode.Uri.file(tmp.imgdir);
+    const pattern = new vscode.RelativePattern(
+      imgdirUri,
+      //'*/**/_*.{png,jpg,jpeg,gif,webp,svg,bmp,avif,PNG,JPG,JPEG,GIF,WEBP,SVG}'
+      '_*.{png,jpg,jpeg,gif,webp,svg,bmp,avif,PNG,JPG,JPEG,GIF,WEBP,SVG}'
+    );
+
+    const imageUris = await vscode.workspace.findFiles(pattern);
+    for (const item of imageUris) {
+      fs.unlinkSync(item.fsPath)
+    }
+
     await cmd_rmd2nb(targetUri.fsPath)
   });
   context.subscriptions.push(disposable);
@@ -78,22 +92,22 @@ export async function activate(context: vscode.ExtensionContext) {
     await cmd_rmd2nb(targetUri.fsPath)
     await cmd_nb2md(nbpath, context)
   });
-  context.subscriptions.push(disposable);  
- 
+  context.subscriptions.push(disposable);
+
   //========== test ===========
-  disposable = vscode.commands.registerCommand('extension.test', async (uri)=>{
+  disposable = vscode.commands.registerCommand('extension.test', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
       return;
     }
     //await cmd_rmd2nb(targetUri)
-    const ext=path.parse(targetUri.fsPath).ext.toLowerCase();
+    const ext = path.parse(targetUri.fsPath).ext.toLowerCase();
     //const rmdPath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.Rmarkdown';    
-    
-    const outpath=path.posix.join(path.parse(targetUri.fsPath).dir,path.parse(targetUri.fsPath).name) +".md" 
-     const resultHtml = await knit(targetUri.fsPath);
-     fs.writeFileSync(outpath,resultHtml,'utf8')
+
+    const outpath = path.posix.join(path.parse(targetUri.fsPath).dir, path.parse(targetUri.fsPath).name) + ".md"
+    const resultHtml = await knitr.knit(targetUri.fsPath);
+    fs.writeFileSync(outpath, resultHtml, 'utf8')
     //const ext = path.extname(aPath).toLowerCase();    
   });
   context.subscriptions.push(disposable);

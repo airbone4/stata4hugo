@@ -2,7 +2,7 @@
   "name": "hugo-helper",
   "displayName": "linchao's huto tool",
   "publisher": "linchao",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "engines": {
     "vscode": "^1.140.0"
   },

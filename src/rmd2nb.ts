@@ -119,9 +119,7 @@ function parseOptionValue(v: string): any {
 
 export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)
-  //dddd1
-  const workdir=env['workdir']
-  const imgdir=env['imgdir']
+
   let yamlFront = '';
   let restText = text;
   if (text.startsWith('---')) {
@@ -195,7 +193,7 @@ export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm'
       if ((c as any).meta) infoParts.push(String((c as any).meta)); //這裡meta 不知道是甚麼,如果有也要推進來。❓
       const rawInfo = infoParts.join(' ').trim(); //rawInfo '{stata,echo=T,block.pre.class="ms-5.w-75"}'
 
-      // If the fence is NOT curly-braced (e.g. ```python), keep it as a fenced code block in markdown
+      // 如果沒有大括號 (e.g. ```python), 那就是一般的markdown code block
       const isCurly = rawInfo.startsWith('{') && rawInfo.endsWith('}');
       if (!isCurly) {
         // treat as markdown fenced code (do not flush pending markdown yet — group naturally)
@@ -210,39 +208,26 @@ export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm'
       let lang = '';
       let metadata: any = {};
 
-      /*
-        const tokens = chunk.paramStr.trim().split(/[\s,]+/).filter(Boolean);
-        const engineName = tokens[0]; 
-        
-        //chunk 參數處理
-        const currentOpts = new Map(opts_chunk); 
-        currentOpts.set('engineName',engineName)
-
-        for (let j = 1; j < tokens.length; j++) {
-            const [key, value] = tokens[j].split('=');
-            if (key && value) {
-                const parsedValue = ['true','t'].includes(value.toLowerCase()) ? true : value === 'false' ? false : value;
-                currentOpts.set(key, parsedValue);
-            }
-        }  
-            */    
+   
       
       if (info.length > 0) {
         // remove surrounding braces
         info = info.slice(1, -1).trim();
 
-        // split by commas first
-        const parts = info.split(',').map(p => p.trim()).filter(p => p.length > 0);
-        if (parts.length > 0) {
+        // 先處理逗點
+        const commaParts = info.split(',').map(p => p.trim()).filter(p => p.length > 0);
+        if (commaParts.length > 0) {
           // first part may contain language and possibly inline options separated by whitespace
-          let first = parts[0]; //就是code fence 三個反頓號後面的字串
+          let first = commaParts[0]; //就是code fence 三個反頓號後面的字串
+          //再處理空白
           const firstTokens = first.split(/\s+/).filter(Boolean);
           lang = firstTokens[0] || '';
           const restParts: string[] = [];
           if (firstTokens.length > 1) {
             restParts.push(firstTokens.slice(1).join(' '));
           }
-          if (parts.length > 1) restParts.push(...parts.slice(1));
+          // 例如, stata kk, echo=T firstTokens 就是 stata kk, commaParts 就是 1. stata kk 2. echo=T
+          if (commaParts.length > 1) restParts.push(...commaParts.slice(1));
 
           // parse each rest part as key[=value]
           for (const p of restParts) {
@@ -257,9 +242,9 @@ export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm'
       
       //只有```{lang} 會到這裡
       let codeSource = (c.value || '') + '\n';
-      metadata['workdir']=workdir
-      //dddd1
-      metadata['imgdir']=imgdir
+  //dddd1
+      metadata={...metadata, ...env}
+      //---👉 進入執行stata
       if ((lang || '').toLowerCase() === 'stata') {
         const rst = await doStata(codeSource,  metadata);
 

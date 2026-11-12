@@ -94,18 +94,17 @@ export async function stata_engine(options) {
       output = logContent + output;
       //dddd1 影像抽取
       regex = /file\s+(.*?)\s+saved\s+as\s+SVG\s+format/gi;
+      
       imglist = [...postrst.matchAll(regex)].map(match => match[1]);
     }
     
     if (!options.savedo) {
-      try {
         fs.unlinkSync(doFile);
-        if (fs.existsSync(logFile)) {
+    }
+
+    if (!options.savelog) {
+        if (fs.existsSync(logFile)) 
           fs.unlinkSync(logFile);
-        }
-      } catch (error) {
-        console.error('Error cleaning up temporary files:', error);
-      }
     }
 
     return {

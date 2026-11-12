@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { out_prefix_img } from './statatool/index.js';
+import { out_prefix_img,getUniqueFilenameSync } from './statatool/index.js';
 
 function saveBase64ToPNGFile(base64String, outputPath) {
   // 1. 移除可能帶有的 Data URL 標頭前綴
@@ -23,26 +23,6 @@ function saveSvgToFile(svgString, outputPath) {
 }
 
 
-function getUniqueFilenameSync(folderPath, prefix = '_xxxx', extension = '.png') {
-  // 1. 確保資料夾存在，若不存在則建立,預設產生_xxxx.png, _xxxx1.png
-  if (!fs.existsSync(folderPath)) {
-    fs.mkdirSync(folderPath, { recursive: true });
-  }
-
-  let counter = 1;
-  // 預設第一個嘗試的檔名，例如：xxxx.png
-  let filename = `${prefix}${extension}`;
-  let fullPath = path.join(folderPath, filename);
-
-  // 2. 如果檔案已存在，就加上數字序號重試 (例如：xxxx_1.png, xxxx_2.png)
-  while (fs.existsSync(fullPath)) {
-    filename = `${prefix}_${counter}${extension}`;
-    fullPath = path.join(folderPath, filename);
-    counter++;
-  }
-
-  return filename; // 回傳唯一的檔名（不含完整路徑）
-}
 
 
 export function nb2md(nb: any, imgfolder: string): string {

@@ -9,6 +9,11 @@ import { find_stata } from './find_stata.js';
 import { stata_engine } from './stata_engine.js';
 import { stataoutput } from './stataoutputhook.js';
 
+const stata_chunk_default={
+  savedo:false,
+  savelog:false
+}
+knitr.lang_chunk["stata"]=stata_chunk_default
 
 const stataexe = await find_stata();
 if (stataexe !== "") {
@@ -34,17 +39,31 @@ function predo(afolder = '') {
   return rst
 }
 //dddd1 postdo 圖形加底線
+// function postdo(adir) {
+//   const rst = `//<<- post ->>
+// graph dir
+// return list
+// foreach item in \`r(list)'{
+//   graph export ${adir}/_\`item'.svg, replace name(\`item')
+  
+// }
+// `
+//   return rst
+// }
 function postdo(adir) {
   const rst = `//<<- post ->>
 graph dir
 return list
 foreach item in \`r(list)'{
-  graph export ${adir}/_\`item'.svg, replace name(\`item')
+  tempfile tmp
+  local imgname=subinstr("\`tmp'",".tmp","",.)
+  graph export "\`imgname'.svg", replace name(\`item')
   
 }
 `
   return rst
 }
+
 const defaultOption = {
   savedo: false,
   error: false,
@@ -67,7 +86,7 @@ async function doStata(stataCode, chunkParam) {
       chunkOpt = { ...chunkParam };
     }
 
-  
+    chunkOpt = { stata_chunk_default,...knitr.opts_chunk  }
     chunkOpt = { ...knitr.opts_chunk, ...defaultOption }
     chunkOpt = { ...chunkOpt, ...chunkParam }
  
@@ -82,8 +101,6 @@ async function doStata(stataCode, chunkParam) {
     let pretxt = predo()
     //dddd1 check
     //let posttxt = postdo(path.join(import.meta.dirname, '../../../temp'))
-    if (!fs.existsSync(chunkParam.imgdir))
-       fs.mkdirSync(chunkParam.imgdir)
     let posttxt = postdo( chunkParam.imgdir)
 
     // 整合原來的程式碼 pretxt+ rawcode + posttxt

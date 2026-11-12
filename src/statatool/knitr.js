@@ -1,4 +1,4 @@
-import { doStata, find_stata } from "./index.js";
+import { doStata, find_stata,getUniqueFilenameSync, parseIO,out_prefix_img } from "./index.js";
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -10,6 +10,7 @@ const opts_chunk = {
   eval: true,
   results: 'show'
 };
+const lang_chunk={}
 
 
 
@@ -137,14 +138,24 @@ knit_hooks['output:js'] = (result, options) => {
 };
 
 knit_hooks['output:stata'] = (result, options) => {
-  const outtxt = isObjectAndNotMap(result) ? result.txt : result;
+  const outtxt = isObjectAndNotMap(result) ? result.txt : "";
+  if (outtxt==="") return ""
 
   let rst = `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options['engineName']}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`;
-  for (const item of result?.imglist?.filter(Boolean) || []) {
-    const rpath = encodeURI(path.relative(options.workdir, item).replaceAll("\\", "/"))
+  //dddd1 knitr 輸出圖形
+  
+  if (result?.imglist?.length>0 && !fs.existsSync(options.imgdir))
+       fs.mkdirSync(options.imgdir)
+
+ for (const item of result?.imglist?.filter(Boolean) || []) {
+    let topath= getUniqueFilenameSync(options.imgdir,`${out_prefix_img}`+path.parse(options.imgdir).name,'')
+    topath = path.join(options.imgdir,topath)+'.svg'
+    fs.copyFileSync(item,topath)
+    const rpath = encodeURI(path.relative(options.workdir, topath).replaceAll("\\", "/"))
 
     rst += `![](${rpath})`
-  }
+  }  
+ 
   return rst
 
 };
@@ -180,7 +191,7 @@ async function knit(docpath) {
     const engineName = tokens[0];
 
     // chunk 參數處理：改用物件淺拷貝與屬性指派
-    const currentOpts = { ...opts_chunk };
+    let currentOpts = { ...opts_chunk };
     currentOpts['engineName'] = engineName;
 
     for (let j = 1; j < tokens.length; j++) {
@@ -190,10 +201,11 @@ async function knit(docpath) {
         currentOpts[key] = parsedValue;
       }
     }
-
-    currentOpts['workdir'] = path.parse(docpath).dir;
-    //dddd1
-    currentOpts['imgdir'] = path.join(currentOpts['workdir'], path.parse(docpath).name + '.files')
+    //dddd1 -2 +1
+    //currentOpts['workdir'] = path.parse(docpath).dir;    
+    //currentOpts['imgdir'] = path.join(currentOpts['workdir'], path.parse(docpath).name + '.files')
+    const ioenv = parseIO(docpath)
+    currentOpts={...ioenv, ...currentOpts}
     let chunkMarkdown = '';
 
     // 🟢 處理 Hook 1: 原始碼顯示
@@ -227,5 +239,6 @@ export {
   knit_engines,
   opts_chunk,
   knit_hooks,
+  lang_chunk ,
   knit
 };

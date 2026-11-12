@@ -5,6 +5,7 @@ import { stataoutput } from './stataoutputhook.js';
 import {out_prefix_img } from './config.js'
 import { doStata ,getStataPath} from './dostata.js';
 import * as knitr from './knitr.js'
+import  {parseIO,imageToDataUrl,getUniqueFilenameSync} from './common.js'
 //import { stata_collectcode } from './stata_collectcode.js';
 
 export {
@@ -14,6 +15,8 @@ export {
     doStata,
     getStataPath,
     knitr,
+    parseIO,
+    getUniqueFilenameSync,
     out_prefix_img
     //stata_collectcode
 };
