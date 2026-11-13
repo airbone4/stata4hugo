@@ -1,6 +1,6 @@
 {
   "name": "hugo-helper",
-  "displayName": "linchao's huto tool",
+  "displayName": "linchao's hugo tool",
   "publisher": "linchao",
   "version": "0.0.10",
   "engines": {
@@ -19,62 +19,63 @@
   "contributes": {
     "commands": [
       {
-        "command": "extension.rmd2ipynb",
+        "command": "hugoHelper.rmd2ipynb",
         "title": "Hugo tool: R/Markdown to Notebook (.ipynb)"
       },
       {
-        "command": "extension.showSetting",
+        "command": "hugoHelper.showSetting",
         "title": "Hugo tool: 自行設定參數"
       },
       {
-        "command": "extension.ipynb2md",
+        "command": "hugoHelper.ipynb2md",
         "title": "Hugo tool: Notebook (.ipynb) to Markdown (.md)"
       },
       {
-        "command": "extension.ipynb2md_shell",
+        "command": "hugoHelper.ipynb2md_shell",
         "title": "Hugo tool: using jupyter (.ipynb) to (.md)"
       },
       {
-        "command": "extension.rmd2md",
+        "command": "hugoHelper.rmd2md",
         "title": "Hugo tool: RMarkdown to markdown"
       },
       {
-        "command": "extension.newnb",
+        "command": "hugoHelper.newnb",
         "title": "Hugo tool: create my stata ipynb"
       },
       {
-        "command": "extension.cleanmarkup",
+        "command": "hugoHelper.cleanmarkup",
         "title": "Hugo tool: clean markup"
-      } ,
+      },
       {
-        "command": "extension.resetIpynb2mdSettings",
+        "command": "hugoHelper.resetIpynb2mdSettings",
         "title": "Jupyter: Reset ipynb2md Overwrite Prompt Settings"
       },
       {
-        "command": "extension.toMdbyKnit",
+        "command": "hugoHelper.toMdbyKnit",
         "title": "Hugo tool: convert to markdown by knit"
       }
     ],
     "keybindings": [
       {
-        "command": "extension.rmd2md",
+        "command": "hugoHelper.rmd2md",
         "key": "ctrl+m ctrl+o",
         "mac": "cmd+m cmd+o",
         "when": "editorTextFocus"
-      },       {
-        "command": "extension.ipynb2md",
+      },
+      {
+        "command": "hugoHelper.ipynb2md",
         "key": "ctrl+m ctrl+m",
         "mac": "cmd+m cmd+m",
         "when": "editorTextFocus"
-      },      
+      },
       {
-        "command": "extension.ipynb2md_shell",
+        "command": "hugoHelper.ipynb2md_shell",
         "key": "ctrl+m ctrl+j",
         "mac": "cmd+m cmd+j",
         "when": "editorTextFocus"
-      },      
+      },
       {
-        "command": "extension.rmd2ipynb",
+        "command": "hugoHelper.rmd2ipynb",
         "key": "ctrl+m ctrl+i",
         "mac": "cmd+m cmd+i",
         "when": "editorTextFocus"
@@ -84,11 +85,11 @@
       "explorer/context": [
         {
           "when": "resourceExtname == .ipynb",
-          "command": "extension.ipynb2md"
+          "command": "hugoHelper.ipynb2md"
         },
         {
           "when": "resourceExtname == .Rmarkdown || resourceExtname == .rmarkdown || resourceExtname == .rmd || resourceExtname == .Rmd",
-          "command": "extension.rmd2md"
+          "command": "hugoHelper.rmd2md"
         }
       ]
     },
@@ -116,16 +117,16 @@
           ],
           "default": "ask",
           "description": "當圖檔檔案已經存在時的處理方式。"
-        }        
+        }
       }
-    }    
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile ", 
-    "xxpretest": "npm run compile && npm run lint", 
+    "pretest": "npm run compile ",
+    "xxpretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test ",
     "test1": "npx tsx test/test_rmd2md.ts",

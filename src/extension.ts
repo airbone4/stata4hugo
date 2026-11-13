@@ -45,7 +45,7 @@ function getAllFolders(dirPath: string, folderList: string[] = []): string[] {
 export async function activate(context: vscode.ExtensionContext) {
 
   // 指令1: 轉 md/rmd to ipynb
-  let disposable = vscode.commands.registerCommand('extension.rmd2ipynb', async (uri) => {
+  let disposable = vscode.commands.registerCommand('hugoHelper.rmd2ipynb', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
@@ -57,7 +57,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 
   // 指令2: 轉 ipynb to md
-  disposable = vscode.commands.registerCommand('extension.ipynb2md', async (uri) => {
+  disposable = vscode.commands.registerCommand('hugoHelper.ipynb2md', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
@@ -70,13 +70,18 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
   // 指令3: Rmarkdown -> notebook->markdown , ctrl M+O
-  disposable = vscode.commands.registerCommand('extension.rmd2md', async (uri) => {
+  disposable = vscode.commands.registerCommand('hugoHelper.rmd2md', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
       return;
     }
-    //await cmd_rmd2nb(targetUri)
+    const ext = path.parse(targetUri.fsPath).ext.toLowerCase();
+    if(!["rmarkdown","rmd"].includes(ext)){
+      vscode.window.showErrorMessage(`not a Rmarkdown file:${targetUri.fsPath}`)
+      return;
+    }  
+
     const nbpath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
     const ok=await cmd_rmd2nb(targetUri.fsPath)
     if(ok)
@@ -87,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 
   //========== test ===========
-  disposable = vscode.commands.registerCommand('extension.toMdbyKnit', async (uri) => {
+  disposable = vscode.commands.registerCommand('hugoHelper.toMdbyKnit', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
@@ -96,6 +101,11 @@ export async function activate(context: vscode.ExtensionContext) {
     
     const ext = path.parse(targetUri.fsPath).ext.toLowerCase();
     const outpath = path.posix.join(path.parse(targetUri.fsPath).dir, path.parse(targetUri.fsPath).name) + ".md"
+    if(!["rmarkdown","rmd"].includes(ext)){
+      vscode.window.showErrorMessage(`not a Rmarkdown file:${outpath}`)
+      return;
+    }  
+
     if(fs.existsSync(outpath)){
      const shouldOverwrite = await confirmOverwriteFile(outpath);
       if (!shouldOverwrite) {
@@ -131,10 +141,10 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 
   //=========== 建立新的notebook ===========
-  disposable = vscode.commands.registerCommand('extension.newnb', cmd_newnb);
+  disposable = vscode.commands.registerCommand('hugoHelper.newnb', cmd_newnb);
   context.subscriptions.push(disposable);
   //========== 重設取消詢問 ===========
-  disposable = vscode.commands.registerCommand('extension.showSetting', async () => {
+  disposable = vscode.commands.registerCommand('hugoHelper.showSetting', async () => {
     await vscode.commands.executeCommand(
       'workbench.action.openSettings',
       '@ext:linchao.hugo-helper' // 格式為 @ext:<publisher>.<name>
@@ -145,14 +155,14 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);  
 
   // ========== 清潔段落 ===========
-  disposable = vscode.commands.registerCommand('extension.cleanmarkup', cmd_cleanmarkup);
+  disposable = vscode.commands.registerCommand('hugoHelper.cleanmarkup', cmd_cleanmarkup);
   context.subscriptions.push(disposable);
 
 
 
   let previousTerminal: vscode.Terminal | null = null;
   context.subscriptions.push(
-    vscode.commands.registerCommand('extension.ipynb2md_shell', (uri) => {
+    vscode.commands.registerCommand('hugoHelper.ipynb2md_shell', (uri) => {
       const editor = vscode.window.activeTextEditor;
       const activeNotebookEditor = vscode.window.activeNotebookEditor;
 
