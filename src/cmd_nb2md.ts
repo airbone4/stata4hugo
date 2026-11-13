@@ -4,7 +4,7 @@ import { nb2md } from './nb2md.js';
 import * as path from 'path';
 import * as fs from 'fs';
 import { out_prefix_img } from './statatool/index.js';
-
+import { confirmOverwriteFile, confirmDeleteImages } from './promptHelper.js';
 
 
 export async function cmd_nb2md(docPath,context:vscode.ExtensionContext)  {
@@ -38,10 +38,33 @@ export async function cmd_nb2md(docPath,context:vscode.ExtensionContext)  {
     name: parsedPath.name,
     ext: '.md'
   });
-  const filesDir = path.join(parsedPath.dir, `${parsedPath.name}.files`);
+
+  const imgDir = path.join(parsedPath.dir, `${parsedPath.name}.files`);
 
   // 5. 檢查目標 Markdown 檔案是否已存在，並判斷使用者的全域設定
-  
+
+
+    
+
+    const imgdirUri = vscode.Uri.file(imgDir);
+    const pattern = new vscode.RelativePattern(
+      imgdirUri,
+      //'*/**/_*.{png,jpg,jpeg,gif,webp,svg,bmp,avif,PNG,JPG,JPEG,GIF,WEBP,SVG}'
+      '_*.{png,jpg,jpeg,gif,webp,svg,bmp,avif,PNG,JPG,JPEG,GIF,WEBP,SVG}'
+    );
+
+    const imageUris = await vscode.workspace.findFiles(pattern);
+    if (imageUris.length > 0) {
+      const isdelete=await confirmDeleteImages(imageUris.length)
+      if (isdelete) {
+        for (const item of imageUris) {
+          fs.unlinkSync(item.fsPath)
+        }
+
+      }
+    }      
+  /*
+// dddd2  
   if (fs.existsSync(outPath)) {
     // 讀取全域狀態，預設值為 false（即：預設需要詢問）
     const skipPrompt =  context.globalState.get<boolean>('ipynb2md.skipOverwritePrompt', false);
@@ -67,14 +90,14 @@ export async function cmd_nb2md(docPath,context:vscode.ExtensionContext)  {
   }
 
   // 🔥 【新功能】檢查並刪除資源資料夾中以 `__` 開頭的舊檔案
-  if (fs.existsSync(filesDir)) {
+  if (fs.existsSync(imgDir)) {
     try {
-      const files = fs.readdirSync(filesDir);
+      const files = fs.readdirSync(imgDir);
       const prefixname=out_prefix_img+parsedPath.name
       files.forEach((file) => {
         // 判斷檔名是否以 __ 開頭
         if (file.startsWith(prefixname)) {
-          const filePath = path.join(filesDir, file);
+          const filePath = path.join(imgDir, file);
           // 確保只刪除檔案，避免誤刪子資料夾
           if (fs.statSync(filePath).isFile()) {
             fs.unlinkSync(filePath);
@@ -86,14 +109,14 @@ export async function cmd_nb2md(docPath,context:vscode.ExtensionContext)  {
       console.error(`清理舊資源檔案失敗: ${err.message}`);
     }
   }
-
+ */
   try {
     // 6. 讀取與解析原始的 JSON 內容
     const text = fs.readFileSync(docPath, 'utf8');
     const nb = JSON.parse(text);
 
     // 7. 執行核心轉換函數
-    const md = nb2md(nb, filesDir);
+    const md = nb2md(nb, imgDir);
 
     // 8. 寫入硬碟並跳出提示
     fs.writeFileSync(outPath, md, 'utf8');

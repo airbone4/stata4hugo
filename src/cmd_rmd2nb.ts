@@ -2,19 +2,21 @@ import * as vscode from 'vscode';
 import { rmd2nb } from './rmd2nb.js';
 import * as path from 'path';
 import * as fs from 'fs';
+import { confirmOverwriteFile, confirmDeleteImages } from './promptHelper.js';
+
+import { getStataPath, parseIO } from './statatool/index.js'
 
 
-import { getStataPath,parseIO } from './statatool/index.js'
+type OverwriteBehavior = 'ask' | 'always' | 'never';
 
 
-
-export async function cmd_rmd2nb(aPath: string) {
+export async function cmd_rmd2nb(aPath: string):Promise<boolean> {
 
   const text = fs.readFileSync(aPath, 'utf8')
   const ext = path.extname(aPath).toLowerCase();
   if (!['.md', '.rmd', '.rmarkdown'].includes(ext)) {
     vscode.window.showWarningMessage('File does not have a .md or .rmd extension, stop.');
-    return
+    return false
   }
 
   let originalProfile = ''
@@ -23,18 +25,12 @@ export async function cmd_rmd2nb(aPath: string) {
   const profilepath = path.join(workdir, 'profile.do')
 
 
-    //dddd1
-    // let ioenv = {
-    //   workdir: `${workdir}`,
-    //   imgdir: `${path.join(path.parse(outPath).dir, path.parse(outPath).name + '.files')}`,
-    //   source: aPath
-    // };
-    const ioenv=parseIO(aPath)  
+  const ioenv = parseIO(aPath)
 
 
   try {
     //  // Find Stata executable
-    
+
     const stataexe = getStataPath()
     if (stataexe !== "") {
       if (fs.existsSync(path.join(path.dirname(stataexe), 'sysprofile.do'))) {
@@ -51,8 +47,14 @@ export async function cmd_rmd2nb(aPath: string) {
     } else {
       vscode.window.showWarningMessage("No Stata executable found.");
     }
-
-
+    //如果ipynb已經存在
+    if (fs.existsSync(outPath)) {
+      const shouldOverwrite = await confirmOverwriteFile(outPath+' or .md');
+      if (!shouldOverwrite) {
+        vscode.window.showWarningMessage(`delete existing file ${outPath} first, and then do it again.`)
+        return false;
+      }
+    }
 
     //這是rmarkdown 中所在的目錄
 
@@ -83,4 +85,5 @@ export async function cmd_rmd2nb(aPath: string) {
       }
     }
   }
+  return true
 }

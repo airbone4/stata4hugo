@@ -7,7 +7,8 @@ import { cmd_rmd2nb } from './cmd_rmd2nb.js'
 import { cmd_newnb } from './cmd_newnb.js'
 import { cmd_nb2md } from './cmd_nb2md.js'
 import { cmd_cleanmarkup } from './cmd_cleanmarkup.js';
-import {knitr,parseIO} from './statatool/index.js';
+import { knitr, parseIO } from './statatool/index.js';
+import { confirmOverwriteFile, confirmDeleteImages } from './promptHelper.js';
 
 
 
@@ -50,19 +51,6 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
       return;
     }
-    const tmp = parseIO(targetUri.fsPath)
-
-    const imgdirUri = vscode.Uri.file(tmp.imgdir);
-    const pattern = new vscode.RelativePattern(
-      imgdirUri,
-      //'*/**/_*.{png,jpg,jpeg,gif,webp,svg,bmp,avif,PNG,JPG,JPEG,GIF,WEBP,SVG}'
-      '_*.{png,jpg,jpeg,gif,webp,svg,bmp,avif,PNG,JPG,JPEG,GIF,WEBP,SVG}'
-    );
-
-    const imageUris = await vscode.workspace.findFiles(pattern);
-    for (const item of imageUris) {
-      fs.unlinkSync(item.fsPath)
-    }
 
     await cmd_rmd2nb(targetUri.fsPath)
   });
@@ -75,6 +63,7 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
       return;
     }
+
     await cmd_nb2md(targetUri.fsPath, context)
   });
   context.subscriptions.push(disposable);
@@ -89,25 +78,54 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     //await cmd_rmd2nb(targetUri)
     const nbpath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
-    await cmd_rmd2nb(targetUri.fsPath)
-    await cmd_nb2md(nbpath, context)
+    const ok=await cmd_rmd2nb(targetUri.fsPath)
+    if(ok)
+      await cmd_nb2md(nbpath, context)
+    else
+      vscode.window.showWarningMessage('to nodebook stop,no markdown generated')
   });
   context.subscriptions.push(disposable);
 
   //========== test ===========
-  disposable = vscode.commands.registerCommand('extension.test', async (uri) => {
+  disposable = vscode.commands.registerCommand('extension.toMdbyKnit', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
       return;
     }
-    //await cmd_rmd2nb(targetUri)
+    
     const ext = path.parse(targetUri.fsPath).ext.toLowerCase();
-    //const rmdPath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.Rmarkdown';    
-
     const outpath = path.posix.join(path.parse(targetUri.fsPath).dir, path.parse(targetUri.fsPath).name) + ".md"
-    const resultHtml = await knitr.knit(targetUri.fsPath);
-    fs.writeFileSync(outpath, resultHtml, 'utf8')
+    if(fs.existsSync(outpath)){
+     const shouldOverwrite = await confirmOverwriteFile(outpath);
+      if (!shouldOverwrite) {
+        vscode.window.showWarningMessage(`delete existing file ${outpath} first, and then do it again.`)
+        return false;
+      }      
+    }  
+    const ioenv=parseIO(outpath)
+
+    const imgdirUri = vscode.Uri.file(ioenv.imgdir);
+    const pattern = new vscode.RelativePattern(
+      imgdirUri,
+      //'*/**/_*.{png,jpg,jpeg,gif,webp,svg,bmp,avif,PNG,JPG,JPEG,GIF,WEBP,SVG}'
+      '_*.{png,jpg,jpeg,gif,webp,svg,bmp,avif,PNG,JPG,JPEG,GIF,WEBP,SVG}'
+    );
+
+    const imageUris = await vscode.workspace.findFiles(pattern);
+    if (imageUris.length > 0) {
+      const isdelete=await confirmDeleteImages(imageUris.length)
+      if (isdelete) {
+        for (const item of imageUris) {
+          fs.unlinkSync(item.fsPath)
+        }
+
+      }
+    }       
+    
+
+    const resultMd = await knitr.knit(targetUri.fsPath);
+    fs.writeFileSync(outpath, resultMd, 'utf8')
     //const ext = path.extname(aPath).toLowerCase();    
   });
   context.subscriptions.push(disposable);
@@ -115,20 +133,21 @@ export async function activate(context: vscode.ExtensionContext) {
   //=========== 建立新的notebook ===========
   disposable = vscode.commands.registerCommand('extension.newnb', cmd_newnb);
   context.subscriptions.push(disposable);
+  //========== 重設取消詢問 ===========
+  disposable = vscode.commands.registerCommand('extension.showSetting', async () => {
+    await vscode.commands.executeCommand(
+      'workbench.action.openSettings',
+      '@ext:linchao.hugo-helper' // 格式為 @ext:<publisher>.<name>
+    );
+
+  });
+
+  context.subscriptions.push(disposable);  
 
   // ========== 清潔段落 ===========
   disposable = vscode.commands.registerCommand('extension.cleanmarkup', cmd_cleanmarkup);
   context.subscriptions.push(disposable);
-  //========== 重設取消詢問 ===========
-  disposable = vscode.commands.registerCommand('extension.resetIpynb2mdSettings', async () => {
-    // 將 globalState 的儲存值改回 false（或者設定為 undefined 來徹底移除該鍵值）
-    await context.globalState.update('ipynb2md.skipOverwritePrompt', false);
 
-    // 跳出成功提示
-    vscode.window.showInformationMessage('已成功重設！下次轉換遇到重複檔案時，將會重新彈窗詢問。');
-  });
-
-  context.subscriptions.push(disposable);
 
 
   let previousTerminal: vscode.Terminal | null = null;

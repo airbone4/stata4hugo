@@ -2,7 +2,7 @@
   "name": "hugo-helper",
   "displayName": "linchao's huto tool",
   "publisher": "linchao",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "engines": {
     "vscode": "^1.140.0"
   },
@@ -21,6 +21,10 @@
       {
         "command": "extension.rmd2ipynb",
         "title": "Hugo tool: R/Markdown to Notebook (.ipynb)"
+      },
+      {
+        "command": "extension.showSetting",
+        "title": "Hugo tool: 自行設定參數"
       },
       {
         "command": "extension.ipynb2md",
@@ -47,8 +51,8 @@
         "title": "Jupyter: Reset ipynb2md Overwrite Prompt Settings"
       },
       {
-        "command": "extension.test",
-        "title": "Hugo tool: test"
+        "command": "extension.toMdbyKnit",
+        "title": "Hugo tool: convert to markdown by knit"
       }
     ],
     "keybindings": [
@@ -87,7 +91,34 @@
           "command": "extension.rmd2md"
         }
       ]
-    }
+    },
+    "configuration": {
+      "title": "套件設定",
+      "properties": {
+        "hugoHelper.overwriteBehavior": {
+          "type": "string",
+          "enum": ["ask", "always", "never"],
+          "enumDescriptions": [
+            "每次都詢問我",
+            "總是自動覆蓋（不再詢問）",
+            "永不覆蓋（直接跳過）"
+          ],
+          "default": "ask",
+          "description": "當目標檔案已經存在時的處理方式。"
+        },
+        "hugoHelper.deleteImageBehavior": {
+          "type": "string",
+          "enum": ["ask", "always", "never"],
+          "enumDescriptions": [
+            "每次都詢問",
+            "刪除_開頭的圖檔",
+            "不刪除_開頭的圖檔"
+          ],
+          "default": "ask",
+          "description": "當圖檔檔案已經存在時的處理方式。"
+        }        
+      }
+    }    
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
