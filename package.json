@@ -66,7 +66,7 @@
         "command": "hugoHelper.ipynb2md",
         "key": "ctrl+m ctrl+m",
         "mac": "cmd+m cmd+m",
-        "when": "editorTextFocus"
+        "when": "notebookEditorFocused || resourceExtname == .ipynb"
       },
       {
         "command": "hugoHelper.ipynb2md_shell",

@@ -56,9 +56,14 @@ export async function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(disposable);
 
-  // 指令2: 轉 ipynb to md
+  // ==========  指令2: 轉 ipynb to md
   disposable = vscode.commands.registerCommand('hugoHelper.ipynb2md', async (uri) => {
-    const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+
+
+    const targetUri =
+      uri ||
+      vscode.window.activeNotebookEditor?.notebook.uri ||
+      vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
       return;
@@ -69,7 +74,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 
 
-  // 指令3: Rmarkdown -> notebook->markdown , ctrl M+O
+  //============= 指令3: Rmarkdown -> notebook->markdown , ctrl M+O==================
   disposable = vscode.commands.registerCommand('hugoHelper.rmd2md', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
@@ -77,14 +82,14 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
     }
     const ext = path.parse(targetUri.fsPath).ext.toLowerCase();
-    if(!["rmarkdown","rmd"].includes(ext)){
+    if (!["rmarkdown", "rmd"].includes(ext)) {
       vscode.window.showErrorMessage(`not a Rmarkdown file:${targetUri.fsPath}`)
       return;
-    }  
+    }
 
     const nbpath = targetUri.fsPath.replace(/(\.r?md$|\.r?markdown$)/i, '') + '.ipynb';
-    const ok=await cmd_rmd2nb(targetUri.fsPath)
-    if(ok)
+    const ok = await cmd_rmd2nb(targetUri.fsPath)
+    if (ok)
       await cmd_nb2md(nbpath, context)
     else
       vscode.window.showWarningMessage('to nodebook stop,no markdown generated')
@@ -97,23 +102,23 @@ export async function activate(context: vscode.ExtensionContext) {
     if (!targetUri) {
       vscode.window.showErrorMessage('找不到可轉換的檔案！');
       return;
-    }
-    
+    }    
+
     const ext = path.parse(targetUri.fsPath).ext.toLowerCase();
     const outpath = path.posix.join(path.parse(targetUri.fsPath).dir, path.parse(targetUri.fsPath).name) + ".md"
-    if(!["rmarkdown","rmd"].includes(ext)){
+    if (!["rmarkdown", "rmd"].includes(ext)) {
       vscode.window.showErrorMessage(`not a Rmarkdown file:${outpath}`)
       return;
-    }  
+    }
 
-    if(fs.existsSync(outpath)){
-     const shouldOverwrite = await confirmOverwriteFile(outpath);
+    if (fs.existsSync(outpath)) {
+      const shouldOverwrite = await confirmOverwriteFile(outpath);
       if (!shouldOverwrite) {
         vscode.window.showWarningMessage(`delete existing file ${outpath} first, and then do it again.`)
         return false;
-      }      
-    }  
-    const ioenv=parseIO(outpath)
+      }
+    }
+    const ioenv = parseIO(outpath)
 
     const imgdirUri = vscode.Uri.file(ioenv.imgdir);
     const pattern = new vscode.RelativePattern(
@@ -124,15 +129,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const imageUris = await vscode.workspace.findFiles(pattern);
     if (imageUris.length > 0) {
-      const isdelete=await confirmDeleteImages(imageUris.length)
+      const isdelete = await confirmDeleteImages(imageUris.length)
       if (isdelete) {
         for (const item of imageUris) {
           fs.unlinkSync(item.fsPath)
         }
 
       }
-    }       
-    
+    }
+
 
     const resultMd = await knitr.knit(targetUri.fsPath);
     fs.writeFileSync(outpath, resultMd, 'utf8')
@@ -152,7 +157,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   });
 
-  context.subscriptions.push(disposable);  
+  context.subscriptions.push(disposable);
 
   // ========== 清潔段落 ===========
   disposable = vscode.commands.registerCommand('hugoHelper.cleanmarkup', cmd_cleanmarkup);

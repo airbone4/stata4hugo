@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { out_prefix_img,getUniqueFilenameSync } from './statatool/index.js';
+import { out_prefix_img, getUniqueFilenameSync } from './statatool/index.js';
 
 function saveBase64ToPNGFile(base64String, outputPath) {
   // 1. 移除可能帶有的 Data URL 標頭前綴
@@ -66,7 +66,8 @@ export function nb2md(nb: any, imgfolder: string): string {
       if (cell.outputs) {
         cell.outputs.forEach(obj => {
           if (obj.output_type === "stream")
-            out_stata.push(obj.text.join('\n'))
+            //out_stata.push(obj.text.join('\n'))
+            out_stata.push(obj.text ? obj.text.join('') : '')
 
         });
 
