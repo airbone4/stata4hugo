@@ -14,7 +14,9 @@
     "type": "git",
     "url": "https://github.com/airbone4/hugo-helper"
   },
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
   "main": "./out/src/extension.js",
   "contributes": {
     "commands": [
@@ -53,7 +55,16 @@
       {
         "command": "hugoHelper.toMdbyKnit",
         "title": "Hugo tool: convert to markdown by knit"
+      },
+      {
+        "command": "hugoHelper.runCodeBlock",
+        "title": "執行 STTA 程式碼區塊"
+      },
+      {
+        "command": "hugoHelper.clearOutput",
+        "title": "清除 STTA 執行結果"
       }
+
     ],
     "keybindings": [
       {
@@ -98,7 +109,11 @@
       "properties": {
         "hugoHelper.overwriteBehavior": {
           "type": "string",
-          "enum": ["ask", "always", "never"],
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
           "enumDescriptions": [
             "每次都詢問我",
             "總是自動覆蓋（不再詢問）",
@@ -109,7 +124,11 @@
         },
         "hugoHelper.deleteImageBehavior": {
           "type": "string",
-          "enum": ["ask", "always", "never"],
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
           "enumDescriptions": [
             "每次都詢問",
             "刪除_開頭的圖檔",

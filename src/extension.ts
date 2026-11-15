@@ -9,7 +9,7 @@ import { cmd_nb2md } from './cmd_nb2md.js'
 import { cmd_cleanmarkup } from './cmd_cleanmarkup.js';
 import { knitr, parseIO } from './statatool/index.js';
 import { confirmOverwriteFile, confirmDeleteImages } from './promptHelper.js';
-
+import * as runner from './embedrunner.js'
 
 
 
@@ -164,7 +164,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 
 
-
+  //======== by jupyter
   let previousTerminal: vscode.Terminal | null = null;
   context.subscriptions.push(
     vscode.commands.registerCommand('hugoHelper.ipynb2md_shell', (uri) => {
@@ -203,6 +203,42 @@ export async function activate(context: vscode.ExtensionContext) {
         });
     })
   );
+//=========== stata runner in markdown ==================
+    // 1. 註冊 CodeLens 提供者
+    const codeLensProvider = new runner.stataCodeLensProvider();
+
+    context.subscriptions.push(
+        vscode.languages.registerCodeLensProvider({ language: 'markdown' }, codeLensProvider)
+    );
+
+    // 2. 註冊「執行」指令
+    const runCommand = vscode.commands.registerCommand(
+        'hugoHelper.runCodeBlock',
+        async (document: vscode.TextDocument, rawinfo:string, codeContent: string, endLine: number) => {
+            await runner.executeAndInsertResult(document, rawinfo,codeContent, endLine);
+        }
+    );
+
+    // 3. 註冊「清除結果」指令
+    const clearCommand = vscode.commands.registerCommand(
+        'hugoHelper.clearOutput',
+        async (document: vscode.TextDocument, endLine: number) => {
+            await runner.clearOutputResult(document, endLine);
+        }
+    );
+    // 4. 註冊「清除所有執行結果」指令
+    const clearAllCommand = vscode.commands.registerCommand(
+        'hugoHelper.clearAllOutputs',
+        async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor || editor.document.languageId !== 'markdown') {
+                vscode.window.showWarningMessage('請先開啟一個 Markdown 檔案。');
+                return;
+            }
+            await runner.clearAllOutputsInDocument(editor.document);
+        }
+    );
+    context.subscriptions.push(runCommand, clearCommand);  
 
 
 }

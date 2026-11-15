@@ -4,6 +4,7 @@ import { Root, Content, Paragraph, Heading, Code, Literal } from 'mdast';
 import * as fs from 'fs'
 
 import { doStata } from './statatool/dostata.js'
+import { parseOptionValue } from './statatool/common.js';
 
 function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: 'gfm' | 'pandoc' }): string {
 
@@ -103,19 +104,19 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
   }
 }
 
-function parseOptionValue(v: string): any {
-  if (!v) return v;
-  const low = v.toLowerCase();
-  if (low === 'true' || low === 't') return true;
-  if (low === 'false' || low === 'f') return false;
-  // number?
-  const n = Number(v);
-  if (!Number.isNaN(n)) return n;
-  // strip quotes if present
-  const m = v.match(/^['"](.*)['"]$/);
-  if (m) return m[1];
-  return v;
-}
+// function parseOptionValue(v: string): any {
+//   if (!v) return v;
+//   const low = v.toLowerCase();
+//   if (low === 'true' || low === 't') return true;
+//   if (low === 'false' || low === 'f') return false;
+//   // number?
+//   const n = Number(v);
+//   if (!Number.isNaN(n)) return n;
+//   // strip quotes if present
+//   const m = v.match(/^['"](.*)['"]$/);
+//   if (m) return m[1];
+//   return v;
+// }
 
 export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
   // Detect YAML front matter (--- ... --- at the top)

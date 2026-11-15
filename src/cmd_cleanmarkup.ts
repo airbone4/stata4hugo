@@ -34,6 +34,7 @@ export function cmd_cleanmarkup() {
       updatedText = updatedText.replace(/我們/g, '');
       updatedText = updatedText.replace(/你的/g, '');
       updatedText = updatedText.replace(/你/g, '');
+      updatedText = updatedText.replace(/為您/g, '');
       //updatedText = updatedText.replace(/α/g,'\\alpha')
       updatedText = updatedText.replace(/(\$\$?)(.*?)\1/gs, (match, delimiter, content) => {
         // 將內容中的所有 "\ " 替換為 " "

@@ -57,5 +57,20 @@ function getUniqueFilenameSync(folderPath, prefix = '_', extension = '.png') {
 }
 
 
+function parseOptionValue(v) {
+  if (!v) return v;
+  const low = v.toLowerCase();
+  if (low === 'true' || low === 't') return true;
+  if (low === 'false' || low === 'f') return false;
+  // number?
+  const n = Number(v);
+  if (!Number.isNaN(n)) return n;
+  // strip quotes if present
+  const m = v.match(/^['"](.*)['"]$/);
+  if (m) return m[1];
+  return v;
+}
 
-export {parseIO, imageToDataUrl, getUniqueFilenameSync}
+
+
+export {parseIO, imageToDataUrl, getUniqueFilenameSync, parseOptionValue}
