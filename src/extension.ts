@@ -12,38 +12,131 @@ import { confirmOverwriteFile, confirmDeleteImages } from './promptHelper.js';
 import * as runner from './embedrunner.js'
 
 
+ 
+
+ const BORDER_COLOR = 'rgba(35, 114, 251, 0.5)'; // 框線顏色，可依喜好調整
+// const BG_COLOR = 'hsla(0, 28%, 80%, 0.03)';     // 背景底色
+
+//const BORDER_COLOR = new vscode.ThemeColor('editorWidget.border');
+const BG_COLOR = new vscode.ThemeColor('textCodeBlock.background');
+// 利用 textDecoration 注入 CSS 寬度，讓右側留出 20px 空間避開捲軸
+const BOX_WIDTH_CSS = 'none; width: calc(100% - 20px); box-sizing: border-box;';
 
 
-function removeExtension(filename: string) {
-  return (
-    filename.substring(0, filename.lastIndexOf('.')) || filename
-  );
-}
+// 1. 頂部行樣式（上、左、右有框線）
+const topDecorationType = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    borderStyle: 'solid',
+    borderWidth: '2px 2px 0px 2px',
+    borderColor: BORDER_COLOR,
+    backgroundColor: BG_COLOR,
+    borderRadius: '4px 4px 0 0',
+    //textDecoration: BOX_WIDTH_CSS
+});
 
-/**
- * 輔助函式：遞迴獲取目錄下的所有子資料夾（排除 node_modules 與 .git）
- */
-function getAllFolders(dirPath: string, folderList: string[] = []): string[] {
-  folderList.push(dirPath); // 加入當前資料夾
+// 2. 中間行樣式（僅左、右有框線）
+const middleDecorationType = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    borderStyle: 'solid',
+    borderWidth: '0 2px 0 2px',
+    borderColor: BORDER_COLOR,
+    backgroundColor: BG_COLOR,
+    //textDecoration: BOX_WIDTH_CSS
+});
 
-  const files = fs.readdirSync(dirPath);
-  for (const file of files) {
-    const fullPath = path.join(dirPath, file);
+// 3. 底部行樣式（下、左、右有框線）
+const bottomDecorationType = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    borderStyle: 'solid',
+    borderWidth: '0 2px 2px 2px',
+    borderColor: BORDER_COLOR,
+    backgroundColor: BG_COLOR,
+    borderRadius: '0 0 4px 4px',
+    //textDecoration: BOX_WIDTH_CSS
+    
+});
 
-    // 排除常見的巨大或隱藏資料夾以提升效能
-    if (file === 'node_modules' || file === '.git' || file === 'dist') {
-      continue;
-    }
+// 4. 單行區塊備用樣式（若區塊只有一行的情況）
+const singleLineDecorationType = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    borderStyle: 'solid',
+    borderWidth: '1px',
+    borderColor: BORDER_COLOR,
+    backgroundColor: BG_COLOR,
+    borderRadius: '4px',
+    //textDecoration: BOX_WIDTH_CSS
+});
 
-    if (fs.statSync(fullPath).isDirectory()) {
-      getAllFolders(fullPath, folderList);
-    }
-  }
-  return folderList;
-}
 
 export async function activate(context: vscode.ExtensionContext) {
 
+    // 註冊四組樣式資源以便停用時釋放
+    context.subscriptions.push(
+        topDecorationType,
+        middleDecorationType,
+        bottomDecorationType,
+        singleLineDecorationType
+    );
+
+    function updateDecorations(editor: vscode.TextEditor | undefined) {
+        if (!editor || !['markdown', 'rmarkdown'].includes(editor.document.languageId)) {
+            return;
+        }
+
+        const text = editor.document.getText();
+        const topRanges: vscode.Range[] = [];
+        const middleRanges: vscode.Range[] = [];
+        const bottomRanges: vscode.Range[] = [];
+        const singleRanges: vscode.Range[] = [];
+
+        //const regex = /```(\{stata\([^\r\n]*\))\(\r?\n([\s\S]*?)\r\)?\n?```/gm;
+        const regex = /```(\{stata[^\r\n]*)\r?\n([\s\S]*?)\r?\n?```/gm
+        let match;
+
+        while ((match = regex.exec(text)) !== null) {
+            const startLine = editor.document.positionAt(match.index).line;
+            const endLine = editor.document.positionAt(match.index + match[0].length).line;
+
+            if (startLine === endLine) {
+                singleRanges.push(new vscode.Range(startLine, 0, startLine, 0));
+                
+            } else {
+                // 頂部行
+                topRanges.push(new vscode.Range(startLine, 0, startLine, 0));
+                // 底部行
+                bottomRanges.push(new vscode.Range(endLine, 0, endLine, 0));
+                // 中間所有行（若有內容行）
+                if (endLine - startLine > 1) {
+                    middleRanges.push(new vscode.Range(startLine + 1, 0, endLine - 1, 0));
+                }
+            }
+        }
+
+        // 分別套用四組裝飾
+        editor.setDecorations(topDecorationType, topRanges);
+        editor.setDecorations(middleDecorationType, middleRanges);
+        editor.setDecorations(bottomDecorationType, bottomRanges);
+        editor.setDecorations(singleLineDecorationType, singleRanges);
+    }
+
+    // 註冊監聽器（維持原本寫法）
+    if (vscode.window.activeTextEditor) {
+        updateDecorations(vscode.window.activeTextEditor);
+    }
+
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor((editor) => {
+            updateDecorations(editor);
+        }),
+        vscode.workspace.onDidChangeTextDocument((event) => {
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor && event.document === activeEditor.document) {
+                updateDecorations(activeEditor);
+            }
+        })
+    );
+
+//===================================================================
   // 指令1: 轉 md/rmd to ipynb
   let disposable = vscode.commands.registerCommand('hugoHelper.rmd2ipynb', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;

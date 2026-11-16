@@ -40,7 +40,7 @@ export class stataCodeLensProvider implements vscode.CodeLensProvider {
       // 1. 執行按鈕
       codeLenses.push(
         new vscode.CodeLens(range, {
-          title: '▶ 執行 STTA',
+          title: '▶ 執行 STATA',
           tooltip: '點擊執行此區塊並將結果輸出於下方',
           command: 'hugoHelper.runCodeBlock',
           arguments: [document, rawinfo, codeContent, endPos.line]
@@ -140,100 +140,50 @@ async function clearGeneratedImages(document: vscode.TextDocument) {
   const text = document.getText();
   const docDir = path.dirname(document.uri.fsPath);
   await clearImageFromText(text, docDir)
-  // // 找出所有 stata 輸出區塊
-  // const outputBlockRegex = /<!-- stta-output-start -->([\s\S]*?)<!-- stta-output-end -->/g;
-  // // 匹配 Markdown 圖片語法 ![alt](path)
-  // const imageLinkRegex = /!\[.*?\]\((.*?)\)/g;
-
-  // const imagePaths = new Set<string>();
-  // let blockMatch;
-
-  // while ((blockMatch = outputBlockRegex.exec(text)) !== null) {
-  //   const blockContent = blockMatch[1];
-  //   let imgMatch;
-  //   while ((imgMatch = imageLinkRegex.exec(blockContent)) !== null) {
-  //     const rawPath = imgMatch[1].trim();
-  //     // 排除網路圖片，只處理本地相對路徑
-  //     if (!rawPath.startsWith('http://') && !rawPath.startsWith('https://')) {
-  //       imagePaths.add(path.resolve(docDir, rawPath));
-  //     }
-  //   }
-  // }
-
-  // if (imagePaths.size === 0) {
-  //   vscode.window.setStatusBarMessage('找不到可清除的 STTA 圖形檔案。', 2500);
-  //   return;
-  // }
-
-  // let deletedCount = 0;
-  // for (const fullPath of imagePaths) {
-  //   try {
-  //     const fileUri = vscode.Uri.file(fullPath);
-  //     // useTrash: true 會將檔案移至資源回收筒，避免誤刪無法救回
-  //     await vscode.workspace.fs.delete(fileUri, { useTrash: true });
-  //     deletedCount++;
-  //   } catch {
-  //     // 若檔案已不存在則略過
-  //   }
-  // }
-
-  // vscode.window.setStatusBarMessage(`已將 ${deletedCount} 個圖形檔案移至回收筒。`, 3000);
+  
 }
-/**
- * 掃描 Markdown 並產生「執行」與「清除」按鈕
- */
-/*
-export class stataCodeLensProvider implements vscode.CodeLensProvider {
-  public provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
-    const codeLenses: vscode.CodeLens[] = [];
-    const text = document.getText();
 
-    // 匹配 ```{stata} 開頭到 ``` 結尾的區塊
-    //const regex = /```\{stata\}\s*\r?\n([\s\S]*?)^```\s*\$/gm;
-    //const regex = /```(\{stata[\s\S]*?\})([\s\S]*?)```/gm;
-    const regex = /```(\{stata[^\r\n]*)\r?\n([\s\S]*?)\r?\n?```/gm
-    let match;
-
-    while ((match = regex.exec(text)) !== null) {
-      const rawinfo = match[1]
-      const codeContent = match[2];
-      const startPos = document.positionAt(match.index);
-      const endPos = document.positionAt(match.index + match[0].length);
-      const range = new vscode.Range(startPos.line, 0, startPos.line, 0);
-
-      // 加入「▶ 執行 stata」按鈕
-      codeLenses.push(
-        new vscode.CodeLens(range, {
-          title: '▶ 執行 stata',
-          tooltip: '點擊執行此區塊並將結果輸出於下方',
-          command: 'hugoHelper.runCodeBlock',
-          arguments: [document, rawinfo, codeContent, endPos.line]
-        })
-      );
-
-      // 檢查下方是否已有舊結果，若有才顯示「🗑 清除結果」按鈕
-      const existingRange = findExistingOutputRange(document, endPos.line);
-      if (existingRange) {
-        codeLenses.push(
-          new vscode.CodeLens(range, {
-            title: '🗑 清除結果',
-            tooltip: '移除此區塊下方的執行結果',
-            command: 'hugoHelper.clearOutput',
-            arguments: [document, endPos.line]
-          })
-        );
-      }
-   
-      
-    }
-
-    return codeLenses;
-  }
-}
-*/
 /**
  * 執行程式碼並覆蓋或插入結果
  */
+export async function executeAndInsertResult(
+  document: vscode.TextDocument,
+  rawinfo: string,
+  code: string,
+  endLine: number
+) {
+  vscode.window.setStatusBarMessage('正在執行 stata...', 2000);
+
+  try {
+    
+    
+
+    const edit = new vscode.WorkspaceEdit();
+    const existingRange = findExistingOutputRange(document, endLine);
+
+    //清除區域中的圖檔dddd3
+    if (existingRange){
+      await clearImageFromText(document.getText(existingRange), path.dirname(document.uri.fsPath))
+    }
+    
+    const output = await mockRunstata(document.fileName, rawinfo, code);
+    const formattedOutput = [
+      OUTPUT_START_MARKER,
+      //      '```stata?class=.output?preclass=ms-2',
+      output?.trim(),
+      //      '```',
+      OUTPUT_END_MARKER
+    ].join('\n');
+
+
+    await updateInsertContent(document, endLine, existingRange, formattedOutput);
+
+    // await vscode.workspace.applyEdit(edit);
+  } catch (error: any) {
+    vscode.window.showErrorMessage(`stata 執行失敗: ${error.message}`);
+  }
+}
+/*
 export async function executeAndInsertResult(
   document: vscode.TextDocument,
   rawinfo: string,
@@ -257,6 +207,11 @@ export async function executeAndInsertResult(
     const edit = new vscode.WorkspaceEdit();
     const existingRange = findExistingOutputRange(document, endLine);
 
+    //清除區域中的圖檔dddd3
+    // if (existingRange){
+    //   await clearImageFromText(document.getText(existingRange), path.dirname(document.uri.fsPath))
+    // }
+
 
     await updateInsertContent(document, endLine, existingRange, formattedOutput);
 
@@ -265,7 +220,7 @@ export async function executeAndInsertResult(
     vscode.window.showErrorMessage(`stata 執行失敗: ${error.message}`);
   }
 }
-
+*/
 /**
  * 清除 Code Fence 下方的輸出結果（包含前置換行）
  */
