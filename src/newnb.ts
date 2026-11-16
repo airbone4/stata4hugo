@@ -1,8 +1,24 @@
-import * as fs from 'fs'
-import * as path from 'path'
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { getStataPath } from './statatool/index.js';
 
-function getContent(date,title){
-let content=`{
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function getStataDir(): string {
+  const exePath = getStataPath();
+  if (exePath) {
+    return path.dirname(exePath).replaceAll('\\', '/') + '/';
+  }
+  return 'C:/Program Files/Stata18/';
+}
+
+function getContent(date: string, title: string) {
+  const stataDir = getStataDir();
+  const toolsDir = path.resolve(__dirname, '../../tools').replaceAll('\\', '/');
+
+  const content = `{
  "cells": [
   {
    "cell_type": "raw",
@@ -36,14 +52,14 @@ let content=`{
    "outputs": [],
    "source": [
     "import stata_setup",
-    "stata_setup.config('C:/Program Files/Stata18/', 'mp')"
+    "stata_setup.config('${stataDir}', 'mp')"
    ]
   },
   {
    "cell_type": "code",
    "execution_count": null,
    "id": "6e6a2ae1",
-      "metadata": {
+   "metadata": {
     "tags": [
      "hide"
     ]
@@ -52,7 +68,7 @@ let content=`{
    "source": [
     "%%stata",
     "set linesize 255",
-    "adopath + \\"${path.resolve(import.meta.dirname, '../../tools').replaceAll('\\','/')}\\""
+    "adopath + \\"${toolsDir}\\""
    ]
   }
  ],
@@ -78,24 +94,17 @@ let content=`{
  "nbformat": 4,
  "nbformat_minor": 5
 }
-`
-return content
+`;
+  return content;
 }
 
-export function newnb(adir,aname){ 
-const now = new Date();
+export function newnb(adir: string, aname: string) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const date = `${year}/${month}/${day}`;
 
-const year = now.getFullYear();
-// 月份 +1 後轉為字串，並確保有兩位數（不足補 0）
-const month = String(now.getMonth() + 1).padStart(2, '0');
-const day = String(now.getDate()).padStart(2, '0');
-
-const date = `${year}/${month}/${day}`;
-
-
-   fs.writeFileSync(path.join(adir,aname), getContent(date,path.parse(aname).name), 'utf8');
-   console.log('File written successfully!');
-  
-  
-}  
- 
+  fs.writeFileSync(path.join(adir, aname), getContent(date, path.parse(aname).name), 'utf8');
+  console.log('File written successfully!');
+}

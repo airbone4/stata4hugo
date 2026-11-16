@@ -82,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
     }
     const ext = path.parse(targetUri.fsPath).ext.toLowerCase();
-    if (!["rmarkdown", "rmd"].includes(ext)) {
+    if (![".rmarkdown", ".rmd"].includes(ext.toLowerCase())) {
       vscode.window.showErrorMessage(`not a Rmarkdown file:${targetUri.fsPath}`)
       return;
     }
@@ -96,7 +96,7 @@ export async function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(disposable);
 
-  //========== test ===========
+  //========== Rmarkdown -> md by knit ===========
   disposable = vscode.commands.registerCommand('hugoHelper.toMdbyKnit', async (uri) => {
     const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
     if (!targetUri) {
@@ -106,7 +106,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const ext = path.parse(targetUri.fsPath).ext.toLowerCase();
     const outpath = path.posix.join(path.parse(targetUri.fsPath).dir, path.parse(targetUri.fsPath).name) + ".md"
-    if (!["rmarkdown", "rmd"].includes(ext)) {
+    if (![".rmarkdown", ".rmd"].includes(ext.toLowerCase())) {
       vscode.window.showErrorMessage(`not a Rmarkdown file:${outpath}`)
       return;
     }

@@ -1,22 +1,22 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { Root, Content, Paragraph, Heading, Code, Literal } from 'mdast';
-import * as fs from 'fs'
+import * as fs from 'fs';
+import * as path from 'path';
 
-import { doStata } from './statatool/dostata.js'
-import { parseOptionValue } from './statatool/common.js';
+import { doStata } from './statatool/dostata.js';
+import { parseOptionValue,parseChunkHeader } from './statatool/common.js';
+import { getStataPath } from './statatool/index.js';
 
 function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: 'gfm' | 'pandoc' }): string {
-
-  // Simple serializer for common block nodes to markdown source
   switch (node.type) {
     case 'paragraph':
       return (node as Paragraph).children.map(c => nodeToMarkdown(c, depth, opts)).join('') + '\n\n';
-    case 'heading':
+    case 'heading': {
       const h = node as Heading;
       return '#'.repeat(h.depth) + ' ' + h.children.map(c => (c as any).value || '').join('') + '\n\n';
-    case 'list':
-      // Render list items by converting their child nodes instead of naively stringifying values.
+    }
+    case 'list': {
       const listNode: any = node as any;
       const ordered = !!listNode.ordered;
       const startIndex = Number(listNode.start) || 1;
@@ -24,6 +24,7 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
       const style = (opts && opts.listStyle) || 'gfm';
       // If pandoc style and source text provided, attempt to parse explicit numbers in the source to compute padding
       let explicitNumbers: number[] | undefined;
+
       if (style === 'pandoc' && opts && (opts as any).sourceText) {
         try {
           const src: string = (opts as any).sourceText || '';
@@ -39,13 +40,13 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
           }
           if (found.length > 0) explicitNumbers = found;
           if (explicitNumbers && explicitNumbers.length > 0) {
-            const maxFound = Math.max(...explicitNumbers, maxIndex);
-            maxIndex = maxFound;
+            maxIndex = Math.max(...explicitNumbers, maxIndex);
           }
         } catch (e) {
-          // ignore and fall back
+          // ignore
         }
       }
+
       const numWidth = ordered ? String(maxIndex).length : 0;
       const indent = '   '.repeat(depth);
 
@@ -76,21 +77,25 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
 
         return indent + prefix + firstText + (indentedRest ? '\n' + indentedRest : '');
       }).join('\n') + '\n\n';
-    case 'code':
+    }
+    case 'code': {
       const c = node as Code;
-
-      if (/```[\s|\S]*```/.test(c.value)) //nest code block
+      if (/```.*```/.test(c.value)) {
         return '````' + (c.lang || '') + '\n' + (c.value || '') + '\n````\n\n';
-      else
+      } else {
         return '```' + (c.lang || '') + '\n' + (c.value || '') + '\n```\n\n';
-    case 'link':
+      }
+    }
+    case 'link': {
       const link = node as any;
       const linkText = link.children?.map((c: any) => nodeToMarkdown(c, depth, opts)).join(' ').replace(/\s+/g, ' ').trim() || link.title || '';
       return `[${linkText}](${link.url})`;
-    case 'image':
+    }
+    case 'image': {
       const img = node as any;
       const alt = img.alt || img.title || '';
       return `![${alt}](${img.url})`;
+    }
     case 'text':
       return (node as any).value || '';
     case 'emphasis':
@@ -104,35 +109,17 @@ function nodeToMarkdown(node: Content, depth: number = 0, opts?: { listStyle?: '
   }
 }
 
-// function parseOptionValue(v: string): any {
-//   if (!v) return v;
-//   const low = v.toLowerCase();
-//   if (low === 'true' || low === 't') return true;
-//   if (low === 'false' || low === 'f') return false;
-//   // number?
-//   const n = Number(v);
-//   if (!Number.isNaN(n)) return n;
-//   // strip quotes if present
-//   const m = v.match(/^['"](.*)['"]$/);
-//   if (m) return m[1];
-//   return v;
-// }
-
 export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm' | 'pandoc', sourceText?: string }): Promise<any> {
-  // Detect YAML front matter (--- ... --- at the top)
-
+  // 嚴謹解析 YAML front matter
   let yamlFront = '';
   let restText = text;
-  if (text.startsWith('---')) {
-    const end = text.indexOf('---', 3);
-    if (end !== -1) {
-      yamlFront = text.slice(0, end + 3).trim();
-      restText = text.slice(end + 3);
-    }
+  const yamlMatch = text.match(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/);
+  if (yamlMatch) {
+    yamlFront = yamlMatch[0].trim();
+    restText = text.slice(yamlMatch[0].length);
   }
 
   const tree = unified().use(remarkParse).parse(restText) as Root;
-
   const cells: any[] = [];
 
   // If YAML front matter found, treat as raw code cell at top
@@ -145,46 +132,41 @@ export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm'
       source: yamlFront + '\n'
     });
   }
+
+  const exePath = getStataPath();
+  const stataDir = exePath ? path.dirname(exePath).replaceAll('\\', '/') + '/' : 'C:/Program Files/Stata18/';
+
   cells.push({
     cell_type: 'code',
     execution_count: null,
-    metadata: {
-      tags: ["hide"]
-    },
+    metadata: { tags: ['hide'] },
     outputs: [],
-    source: 'import stata_setup\n' + 'stata_setup.config("C:/Program Files/Stata18/", "mp")\n'
-  })
+    source: `import stata_setup\nstata_setup.config("${stataDir}", "mp")\n`
+  });
+
   cells.push({
-    cell_type: "code",
+    cell_type: 'code',
     execution_count: null,
-    metadata: {
-      tags: [
-        "hide"
-      ]
-    },
+    metadata: { tags: ['hide'] },
     outputs: [],
-    source: [
-      "%stata set linesize 255"
-    ]
-  })
-  // We'll iterate and group consecutive non-code nodes into one markdown cell.
+    source: ['%stata set linesize 255']
+  });
+
   let pendingMarkdown: string[] = [];
 
   function flushMarkdown() {
     //將累積的部分而輸出成markdown block
     if (pendingMarkdown.length === 0) return;
-    let acell = {
+    const acell: any = {
       cell_type: 'markdown',
       metadata: {},
       source: pendingMarkdown.join('')
-    }
+    };
     cells.push(acell);
     pendingMarkdown = [];
-    return acell
+    return acell;
   }
 
-
-  //const dotask = await stata_collectcode();
   for (const node of tree.children) {
     if (node.type === 'code') {
       const c = node as Code;
@@ -195,129 +177,72 @@ export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm'
       const rawInfo = infoParts.join(' ').trim(); //rawInfo '{stata,echo=T,block.pre.class="ms-5.w-75"}'
 
       // 如果沒有大括號 (e.g. ```python), 那就是一般的markdown code block
-      const isCurly = rawInfo.startsWith('{') && rawInfo.endsWith('}');
+      // 但是現在我要允許例如 {}?class=.d-none,所以只檢查第一個括號
+      const isCurly = rawInfo.startsWith('{') //&& rawInfo.endsWith('}');
       if (!isCurly) {
         // treat as markdown fenced code (do not flush pending markdown yet — group naturally)
         pendingMarkdown.push(nodeToMarkdown(node as Content));
         continue;
       }
 
-
       flushMarkdown();
-      // For curly-braced chunks, convert to a code cell
-      let info = rawInfo;
-      let lang = '';
-      let metadata: any = {};
-
-   
+      const { engineName:lang, options } = parseChunkHeader(rawInfo);
       
-      if (info.length > 0) {
-        // remove surrounding braces
-        info = info.slice(1, -1).trim();
-
-        // 先處理逗點
-        const commaParts = info.split(',').map(p => p.trim()).filter(p => p.length > 0);
-        if (commaParts.length > 0) {
-          // first part may contain language and possibly inline options separated by whitespace
-          let first = commaParts[0]; //就是code fence 三個反頓號後面的字串
-          //再處理空白
-          const firstTokens = first.split(/\s+/).filter(Boolean);
-          lang = firstTokens[0] || '';
-          const restParts: string[] = [];
-          if (firstTokens.length > 1) {
-            restParts.push(firstTokens.slice(1).join(' '));
-          }
-          // 例如, stata kk, echo=T firstTokens 就是 stata kk, commaParts 就是 1. stata kk 2. echo=T
-          if (commaParts.length > 1) restParts.push(...commaParts.slice(1));
-
-          // parse each rest part as key[=value]
-          for (const p of restParts) {
-            const [kRaw, ...rest] = p.split('=');
-            const k = kRaw ? kRaw.trim() : '';
-            if (!k) continue;
-            const v = rest.length > 0 ? rest.join('=').trim() : undefined;
-            metadata[k] = v === undefined ? true : parseOptionValue(v);
-          }
-        }
-      }
       
+
       //只有```{lang} 會到這裡
-      let codeSource = (c.value || '') + '\n';
-  //dddd1
-      metadata={...metadata, ...env}
-      //---👉 進入執行stata
+      const codeSource = (c.value || '') + '\n';
+      //metadata = { ...metadata, ...env };
+      let parsedOptions={...options,...env}
+
       if ((lang || '').toLowerCase() === 'stata') {
-        const rst = await doStata(codeSource,  metadata);
-
-        //原來的程式碼
-        let rstnode: any = {};
-        let acodecell: any = {}
-
-        rstnode = { lang: info, type: 'code', value: codeSource } as Literal;
+        const rst = await doStata(codeSource, parsedOptions);
+        const rstnode = { lang: lang, type: 'code', value: codeSource } as Literal;
         pendingMarkdown.push(nodeToMarkdown(rstnode as Content));
-        acodecell = flushMarkdown()
-        //懶得重寫flushMarkdown ,因此用這兩行直接修正
-        acodecell.source = '%%stata\n' + codeSource
-        acodecell.cell_type = 'code'
-        acodecell.execution_count = 1
-        acodecell.metadata = { tags: [] }; //初始化,空的
-        if (metadata.echo == false) {
-          const hidesource = ["hidesource"];
-          acodecell.metadata.tags = [...acodecell.metadata.tags, ...hidesource]
+        const acodecell = flushMarkdown();
+
+        acodecell.source = '%%stata\n' + codeSource;
+        acodecell.cell_type = 'code';
+        acodecell.execution_count = 1;
+        //把原先的rmarkdown 設定放到metadata中的options
+        acodecell.metadata = { tags: [],options:parsedOptions };
+
+        if (parsedOptions.echo === false) {
+          acodecell.metadata.tags.push('hidesource');
         }
-        //執行結果程式碼
-        //hide:=true 只有顯示程式碼,不顯示結果
 
+        acodecell.outputs = [];
+        const cellout: any = {
+          name: 'stdout',
+          output_type: 'stream',
+          text: rst?.txt ? rst.txt.split('\n') : []
+        };
+        acodecell.outputs.push(cellout);
 
-        //這裡只有處理 字串輸出,圖形輸出沒有
-        acodecell.outputs = []
-        let cellout: any = {}
-        cellout.name = "stdout"
-        cellout.output_type = "stream"
-        cellout.text = rst ? rst.txt.split('\n') : '';
-
-        acodecell.outputs.push(cellout)
-        if (metadata.results == 'hide') {
-          const hideoutput = ["hideoutput"];
-          acodecell.metadata.tags = [...acodecell.metadata.tags, ...hideoutput]
+        if (parsedOptions.results === 'hide') {
+          acodecell.metadata.tags.push('hideoutput');
         }
-        //  for (const item of rst.imglist){
-        //   let imgobject = {
-        //     data: {},
-        //     "metadata": {},
-        //     "output_type": "display_data"            
-        //   }
-        //   const imgcontent =fs.readFileSync(item,'utf8');
-        //   imgobject.data["image/svg+xml"]=imgcontent
-        //   acodecell.outputs.push(imgobject)
-        //  }
-        // 💡 使用 ?. 與 || [] 確保安全, Boolean 是一個函數,每一個項目都會傳為參數
+
         for (const item of rst?.imglist?.filter(Boolean) || []) {
-          let imgobject = {
+          const imgobject: any = {
             data: {},
-            "metadata": {},
-            "output_type": "display_data"
-          }
+            metadata: {},
+            output_type: 'display_data'
+          };
           const imgcontent = fs.readFileSync(item, 'utf8');
-          imgobject.data["image/svg+xml"] = imgcontent;
+          imgobject.data['image/svg+xml'] = imgcontent;
           acodecell.outputs.push(imgobject);
         }
-
-
-
       } else {
         //其他語言,例如{js}{python}不處理,留著給ipynb處理
         cells.push({
           cell_type: 'code',
           execution_count: null,
-          metadata: Object.assign({ language: lang || '' }, metadata),
+          metadata: Object.assign({ language: lang || '' }, parsedOptions),
           outputs: [],
           source: codeSource
         });
       }
-
-
-
     } else {
       // provide the original restText as sourceText so list rendering can inspect marker numbers for pandoc style
       const md = nodeToMarkdown(node as Content, 0, Object.assign({}, opts, { sourceText: restText }));
@@ -325,7 +250,6 @@ export async function rmd2nb(text: string, env?: any, opts?: { listStyle?: 'gfm'
       pendingMarkdown.push(md);
     }
   }
-
 
   flushMarkdown();
 

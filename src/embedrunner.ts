@@ -3,8 +3,10 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { doStata } from './statatool/dostata.js'
 import { parseOptionValue } from './statatool/common.js';
-import { parseIO, getUniqueFilenameSync } from './statatool/common.js';
+import { parseIO, parseChunkHeader, getUniqueFilenameSync } from './statatool/common.js';
 import { out_prefix_img } from './statatool/config.js';
+import * as knitr from './statatool/knitr.js'
+import { updateInsertContent } from './tool/edittool.js';
 
 
 // const OUTPUT_START_MARKER = '{{< expand title="執行結果" incode=false >}}'
@@ -12,9 +14,175 @@ import { out_prefix_img } from './statatool/config.js';
 const OUTPUT_START_MARKER = '<!-- stata-output-start -->';
 const OUTPUT_END_MARKER = '<!-- stata-output-end -->';
 
+
+/**
+ * 掃描 Markdown 並產生完整按鈕列：
+ * ▶ 執行 STTA | 🗑 清除結果 | 🧹 清除所有輸出 | 🖼 清除圖形檔案
+ */
+
+export class stataCodeLensProvider implements vscode.CodeLensProvider {
+  public provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+    const codeLenses: vscode.CodeLens[] = [];
+    const text = document.getText();
+    const hasAnyOutput = text.includes(OUTPUT_START_MARKER);
+
+    //const regex = /^```\{stta\}\s*\(\r\)?\n([\s\(\S\)]*?)^```\s*$/gm;
+    const regex = /```(\{stata[^\r\n]*)\r?\n([\s\S]*?)\r?\n?```/gm
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      const rawinfo = match[1]
+      const codeContent = match[2];
+      const startPos = document.positionAt(match.index);
+      const endPos = document.positionAt(match.index + match[0].length);
+      const range = new vscode.Range(startPos.line, 0, startPos.line, 0);
+
+      // 1. 執行按鈕
+      codeLenses.push(
+        new vscode.CodeLens(range, {
+          title: '▶ 執行 STTA',
+          tooltip: '點擊執行此區塊並將結果輸出於下方',
+          command: 'hugoHelper.runCodeBlock',
+          arguments: [document, rawinfo, codeContent, endPos.line]
+          //arguments: [document, codeContent, endPos.line]
+        })
+      );
+
+      // 2. 清除單一結果按鈕
+      const existingRange = findExistingOutputRange(document, endPos.line);
+      if (existingRange) {
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: '🗑 清除結果',
+            tooltip: '移除此區塊下方的執行結果',
+            command: 'hugoHelper.clearOutput',
+            arguments: [document, endPos.line]
+          })
+        );
+      }
+
+      // 3. 清除所有輸出按鈕
+      if (hasAnyOutput) {
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: '🧹 清除所有輸出',
+            tooltip: '移除整份文件中所有的 STTA 執行結果',
+            command: 'hugoHelper.clearAllOutputs'
+          })
+        );
+      }
+
+      // 4. 清除圖形檔案按鈕（固定顯示在最後面，並透過分隔線隔開）
+      // codeLenses.push(
+      //   new vscode.CodeLens(range, {
+      //     title: '🖼 清除圖形檔案',
+      //     tooltip: '刪除 STTA 產生的圖形檔案',
+      //     command: 'hugoHelper.clearImages',
+      //     arguments: [document]
+      //   })
+      // );
+    }
+
+    return codeLenses;
+  }
+}
+
+/**
+ * 掃描輸出區塊中引用的圖片並從硬碟刪除
+ */
+async function clearImageFromText(text, imgRoot) {
+  //const text = document.getText();
+  //const docDir = path.dirname(document.uri.fsPath);
+  const docDir = imgRoot;
+
+  // 找出所有 stata 輸出區塊
+  const outputBlockRegex = /<!-- stata-output-start -->([\s\S]*?)<!-- stata-output-end -->/g;
+  // 匹配 Markdown 圖片語法 ![alt](path)
+  const imageLinkRegex = /!\[.*?\]\((.*?)\)/g;
+
+  const imagePaths = new Set<string>();
+  let blockMatch;
+
+  while ((blockMatch = outputBlockRegex.exec(text)) !== null) {
+    const blockContent = blockMatch[1];
+    let imgMatch;
+    while ((imgMatch = imageLinkRegex.exec(blockContent)) !== null) {
+      const rawPath = imgMatch[1].trim();
+      // 排除網路圖片，只處理本地相對路徑
+      if (!rawPath.startsWith('http://') && !rawPath.startsWith('https://')) {
+        imagePaths.add(path.resolve(docDir, rawPath));
+      }
+    }
+  }
+
+  if (imagePaths.size === 0) {
+    vscode.window.setStatusBarMessage('找不到可清除的 STTA 圖形檔案。', 2500);
+    return;
+  }
+
+  let deletedCount = 0;
+  for (const fullPath of imagePaths) {
+    try {
+      const apath = decodeURIComponent(fullPath)
+      const fileUri = vscode.Uri.file(apath);
+      
+      // useTrash: true 會將檔案移至資源回收筒，避免誤刪無法救回
+      await vscode.workspace.fs.delete(fileUri, { useTrash: true });
+      deletedCount++;
+    } catch {
+      // 若檔案已不存在則略過
+    }
+  }
+
+  vscode.window.setStatusBarMessage(`已將 ${deletedCount} 個圖形檔案移至回收筒。`, 3000);
+}
+async function clearGeneratedImages(document: vscode.TextDocument) {
+  const text = document.getText();
+  const docDir = path.dirname(document.uri.fsPath);
+  await clearImageFromText(text, docDir)
+  // // 找出所有 stata 輸出區塊
+  // const outputBlockRegex = /<!-- stta-output-start -->([\s\S]*?)<!-- stta-output-end -->/g;
+  // // 匹配 Markdown 圖片語法 ![alt](path)
+  // const imageLinkRegex = /!\[.*?\]\((.*?)\)/g;
+
+  // const imagePaths = new Set<string>();
+  // let blockMatch;
+
+  // while ((blockMatch = outputBlockRegex.exec(text)) !== null) {
+  //   const blockContent = blockMatch[1];
+  //   let imgMatch;
+  //   while ((imgMatch = imageLinkRegex.exec(blockContent)) !== null) {
+  //     const rawPath = imgMatch[1].trim();
+  //     // 排除網路圖片，只處理本地相對路徑
+  //     if (!rawPath.startsWith('http://') && !rawPath.startsWith('https://')) {
+  //       imagePaths.add(path.resolve(docDir, rawPath));
+  //     }
+  //   }
+  // }
+
+  // if (imagePaths.size === 0) {
+  //   vscode.window.setStatusBarMessage('找不到可清除的 STTA 圖形檔案。', 2500);
+  //   return;
+  // }
+
+  // let deletedCount = 0;
+  // for (const fullPath of imagePaths) {
+  //   try {
+  //     const fileUri = vscode.Uri.file(fullPath);
+  //     // useTrash: true 會將檔案移至資源回收筒，避免誤刪無法救回
+  //     await vscode.workspace.fs.delete(fileUri, { useTrash: true });
+  //     deletedCount++;
+  //   } catch {
+  //     // 若檔案已不存在則略過
+  //   }
+  // }
+
+  // vscode.window.setStatusBarMessage(`已將 ${deletedCount} 個圖形檔案移至回收筒。`, 3000);
+}
 /**
  * 掃描 Markdown 並產生「執行」與「清除」按鈕
  */
+/*
 export class stataCodeLensProvider implements vscode.CodeLensProvider {
   public provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
     const codeLenses: vscode.CodeLens[] = [];
@@ -55,12 +223,14 @@ export class stataCodeLensProvider implements vscode.CodeLensProvider {
           })
         );
       }
+   
+      
     }
 
     return codeLenses;
   }
 }
-
+*/
 /**
  * 執行程式碼並覆蓋或插入結果
  */
@@ -78,26 +248,19 @@ export async function executeAndInsertResult(
 
     const formattedOutput = [
       OUTPUT_START_MARKER,
-//      '```stata?class=.output?preclass=ms-2',
-      output.trim(),
-//      '```',
+      //      '```stata?class=.output?preclass=ms-2',
+      output?.trim(),
+      //      '```',
       OUTPUT_END_MARKER
     ].join('\n');
 
     const edit = new vscode.WorkspaceEdit();
     const existingRange = findExistingOutputRange(document, endLine);
 
-    if (existingRange) {
-      // 覆蓋舊結果
-      edit.replace(document.uri, existingRange, formattedOutput);
-    } else {
-      // 插入新結果
-      const endLineText = document.lineAt(endLine).text;
-      const insertPosition = new vscode.Position(endLine, endLineText.length);
-      edit.insert(document.uri, insertPosition, `\n${formattedOutput}`);
-    }
 
-    await vscode.workspace.applyEdit(edit);
+    await updateInsertContent(document, endLine, existingRange, formattedOutput);
+
+    // await vscode.workspace.applyEdit(edit);
   } catch (error: any) {
     vscode.window.showErrorMessage(`stata 執行失敗: ${error.message}`);
   }
@@ -121,7 +284,9 @@ export async function clearOutputResult(
   const endLineLength = document.lineAt(endLine).text.length;
   const deleteStart = new vscode.Position(endLine, endLineLength);
   const fullDeleteRange = new vscode.Range(deleteStart, existingRange.end);
-
+  let txt = document.getText(fullDeleteRange)
+  //清除區段中的圖形檔案
+  clearImageFromText(txt, path.dirname(document.uri.fsPath) )
   edit.delete(document.uri, fullDeleteRange);
   await vscode.workspace.applyEdit(edit);
 }
@@ -193,91 +358,33 @@ export async function clearAllOutputsInDocument(document: vscode.TextDocument) {
     vscode.window.setStatusBarMessage('目前沒有可清除的 stata 執行結果。', 2000);
     return;
   }
-
+  await clearGeneratedImages(document)
   await vscode.workspace.applyEdit(edit);
   vscode.window.setStatusBarMessage(`已清除 ${count} 個 stata 執行結果。`, 2000);
 }
 
-function getoutput(result, options)  {
 
-  let outtxt=result.txt
-  let rst =options['echo']? `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options['engineName']}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`
-                          :`\n\`\`\`${options['engineName']}\n${outtxt}\n\`\`\`\n`
-  //dddd1 knitr 輸出圖形
-  
-  if (result?.imglist?.length>0 && !fs.existsSync(options.imgdir))
-       fs.mkdirSync(options.imgdir)
-
- for (const item of result?.imglist?.filter(Boolean) || []) {
-    let topath= getUniqueFilenameSync(options.imgdir,`${out_prefix_img}`+path.parse(options.imgdir).name,'')
-    topath = path.join(options.imgdir,topath)+'.svg'
-    fs.copyFileSync(item,topath)
-    const rpath = encodeURI(path.relative(options.workdir, topath).replaceAll("\\", "/"))
-
-    rst += `![](${rpath})`
-  }  
- 
-  return rst
-
-};
-
-export async function mockRunstata(docpath: string, rawinfo: string, code: string) {
-
-  let info = rawinfo;
-  let lang = '';
-  let metadata: any = {engineName:'stata'};
+export async function mockRunstata(docpath: string, rawinfo: string, code: string): Promise<any> {
 
 
-
-  if (info.length > 0) {
-    // remove surrounding braces
-    info = info.slice(1, -1).trim();
-
-    // 先處理逗點
-    const commaParts = info.split(/[?, ]+/).map(p => p.trim()).filter(p => p.length > 0);
-    if (commaParts.length > 0) {
-      // first part may contain language and possibly inline options separated by whitespace
-      let first = commaParts[0].replace(/^\{|\}$/g, ""); //就是code fence 三個反頓號後面的字串
-      //再處理空白
-      const firstTokens = first.split(/\s+/).filter(Boolean);
-      lang = firstTokens[0] || '';
-      const restParts: string[] = [];
-      if (firstTokens.length > 1) {
-        restParts.push(firstTokens.slice(1).join(' '));
-      }
-      // 例如, stata kk, echo=T firstTokens 就是 stata kk, commaParts 就是 1. stata kk 2. echo=T
-      if (commaParts.length > 1) restParts.push(...commaParts.slice(1));
-
-      // parse each rest part as key[=value]
-      for (const p of restParts) {
-        const [kRaw, ...rest] = p.split('=');
-        const k = kRaw ? kRaw.trim() : '';
-        if (!k) continue;
-        const v = rest.length > 0 ? rest.join('=').trim() : undefined;
-        metadata[k] = v === undefined ? true : parseOptionValue(v);
-      }
-    }
-  }
-
-  let ioenv = parseIO(docpath)
-  //dddd1
-  metadata = { ...metadata, ...ioenv }
+  const { engineName, options } = parseChunkHeader(rawinfo);
+  const ioenv = parseIO(docpath);
+  const metadata: any = {
+    ...options,
+    ...ioenv
+  };
   //---👉 進入執行stata
   let rst: any;
-  if ((lang || '').toLowerCase() === 'stata') {
+  if ((engineName || '').toLowerCase() === 'stata') {
     rst = await doStata(code, metadata);
   }
-  let result = getoutput(rst,metadata)
- 
+  //let result = getoutput(rst,metadata)
 
-  // for (const item of rst?.imglist?.filter(Boolean) || []) {
-  //   let topath = getUniqueFilenameSync(metadata.imgdir, `${out_prefix_img}` + path.parse(metadata.imgdir).name, '')
-  //   topath = path.join(metadata.imgdir, topath) + '.svg'
-  //   fs.copyFileSync(item, topath)
-  //   const rpath = encodeURI(path.relative(metadata.workdir, topath).replaceAll("\\", "/"))
+  //輸出圖形處理
+  let ohook = knitr.knit_hooks['output:stata']
+  let result = ohook ? ohook(rst, metadata) : ''
 
-  //   result += `![](${rpath})`
-  // }
+
 
   return result
 }

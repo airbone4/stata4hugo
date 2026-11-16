@@ -1,6 +1,8 @@
-import { doStata, find_stata,getUniqueFilenameSync, parseIO,out_prefix_img } from "./index.js";
+import { doStata, find_stata, getUniqueFilenameSync, parseIO, out_prefix_img } from "./index.js";
 import * as fs from 'fs';
 import * as path from 'path';
+import { parseChunkHeader,processImagesToMarkdown } from "./common.js"
+
 
 // 將 Map 全部改為一般物件
 const knit_engines = {};
@@ -10,7 +12,7 @@ const opts_chunk = {
   eval: true,
   results: 'show'
 };
-const lang_chunk={}
+const lang_chunk = {}
 
 
 
@@ -139,23 +141,33 @@ knit_hooks['output:js'] = (result, options) => {
 
 knit_hooks['output:stata'] = (result, options) => {
   const outtxt = isObjectAndNotMap(result) ? result.txt : "";
-  if (outtxt==="") return ""
+  if (outtxt === "") return ""
 
-  let rst = `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options['engineName']}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`;
-  //dddd1 knitr 輸出圖形
+  const classlist = options.class?.split('.').filter(Boolean) || []
+  let rst;
+  if (classlist.includes('d-none')){
+    rst = `\n\`\`\`${options['engineName']}\n${outtxt}\n\`\`\`\n\n`;
+  }
+  else {
+    rst = `{{< expand title="執行結果" incode=false class="" >}}\n\`\`\`${options['engineName']}\n${outtxt}\n\`\`\`\n{{< /expand >}}\n\n`;
+  }
   
-  if (result?.imglist?.length>0 && !fs.existsSync(options.imgdir))
-       fs.mkdirSync(options.imgdir)
+  //dddd1 knitr 輸出圖形
 
- for (const item of result?.imglist?.filter(Boolean) || []) {
-    let topath= getUniqueFilenameSync(options.imgdir,`${out_prefix_img}`+path.parse(options.imgdir).name,'')
-    topath = path.join(options.imgdir,topath)+'.svg'
-    fs.copyFileSync(item,topath)
-    const rpath = encodeURI(path.relative(options.workdir, topath).replaceAll("\\", "/"))
+  if (result?.imglist?.length > 0 && !fs.existsSync(options.imgdir))
+    fs.mkdirSync(options.imgdir)
 
-    rst += `![](${rpath})`
-  }  
- 
+  rst = rst + processImagesToMarkdown(result?.imglist, options)
+  //dddd2 好像可以不用調用processImagesToMarkdown
+  //  for (const item of result?.imglist?.filter(Boolean) || []) {
+  //     let topath= getUniqueFilenameSync(options.imgdir,`${out_prefix_img}`+path.parse(options.imgdir).name,'')
+  //     topath = path.join(options.imgdir,topath)+'.svg'
+  //     fs.copyFileSync(item,topath)
+  //     const rpath = encodeURI(path.relative(options.workdir, topath).replaceAll("\\", "/"))
+
+  //     rst += `![](${rpath})`
+  //   }  
+
   return rst
 
 };
@@ -169,7 +181,7 @@ knit_hooks['output:python'] = (result, options) => {
 // 5. 核心 Knit 編譯器函數
 async function knit(docpath) {
   const rawMarkdown = fs.readFileSync(docpath, 'utf8')
-  //const chunkRegex = /```\(\{([^}]+)\}[\r]\)?\n([\s\(\S\)]*?)\([\r]\)?\n```/g
+
   const chunkRegex = /```\{([^}]+)\}[\r]?\n([\s\(\S\)]*?)[\r]?\n```/g
   let markdownOutput = rawMarkdown;
   let match;
@@ -184,28 +196,39 @@ async function knit(docpath) {
     });
   }
 
+
   for (let i = chunksToProcess.length - 1; i >= 0; i--) {
+
+    //dddd2 -1blok
+    // const chunk = chunksToProcess[i];
+
+    // const tokens = chunk.paramStr.trim().split(/[\s,]+/).filter(Boolean);
+    // const engineName = tokens[0];
+
+    // // chunk 參數處理：改用物件淺拷貝與屬性指派
+    // let currentOpts = { ...opts_chunk };
+    // currentOpts['engineName'] = engineName;
+
+    // for (let j = 1; j < tokens.length; j++) {
+    //   const [key, value] = tokens[j].split('=');
+    //   if (key && value) {
+    //     const parsedValue = ['true', 't'].includes(value.toLowerCase()) ? true : value === 'false' ? false : value;
+    //     currentOpts[key] = parsedValue;
+    //   }
+    // }
+    // const ioenv = parseIO(docpath)
+    // currentOpts = { ...ioenv, ...currentOpts }
+
+    let currentOpts = { };
     const chunk = chunksToProcess[i];
 
-    const tokens = chunk.paramStr.trim().split(/[\s,]+/).filter(Boolean);
-    const engineName = tokens[0];
+    // 1. 直接解析標頭取得 engineName 與轉換好型別的 options
+    //從回傳的物件中取出名為 options 的屬性，並重新命名為新的常數 parsedOpts
+    const { engineName, options: parsedOpts } = parseChunkHeader(chunk.paramStr);
 
-    // chunk 參數處理：改用物件淺拷貝與屬性指派
-    let currentOpts = { ...opts_chunk };
-    currentOpts['engineName'] = engineName;
-
-    for (let j = 1; j < tokens.length; j++) {
-      const [key, value] = tokens[j].split('=');
-      if (key && value) {
-        const parsedValue = ['true', 't'].includes(value.toLowerCase()) ? true : value === 'false' ? false : value;
-        currentOpts[key] = parsedValue;
-      }
-    }
-    //dddd1 -2 +1
-    //currentOpts['workdir'] = path.parse(docpath).dir;    
-    //currentOpts['imgdir'] = path.join(currentOpts['workdir'], path.parse(docpath).name + '.files')
     const ioenv = parseIO(docpath)
-    currentOpts={...ioenv, ...currentOpts}
+    // 依優先順序合併：預設參數 < 文件路徑環境 < 區塊內設定的參數
+    currentOpts = { ...opts_chunk ,...ioenv, ...parsedOpts }
     let chunkMarkdown = '';
 
     // 🟢 處理 Hook 1: 原始碼顯示
@@ -239,6 +262,6 @@ export {
   knit_engines,
   opts_chunk,
   knit_hooks,
-  lang_chunk ,
+  lang_chunk,
   knit
 };

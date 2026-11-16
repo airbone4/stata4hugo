@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 
 export type OverwriteBehavior = 'ask' | 'always' | 'never';
 
-
 interface PromptOption<T extends string> extends vscode.QuickPickItem {
   /** 點擊此選項時要回傳的結果 */
   result: T;
@@ -64,9 +63,14 @@ async function promptWithSettingsMemory<T extends string>(config: PromptConfig<T
         isHandled = true;
         quickPick.hide();
 
-        await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:linchao.hugo-helper'); //config.fullConfigKey ->HugoHelper
-
+        await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:linchao.hugo-helper');
         // 監聽設定是否被修改
+
+        const handleReturnToEditor = () => {
+          cleanupListeners();
+          resolve(promptWithSettingsMemory(config));
+        };
+
         const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
           if (e.affectsConfiguration(config.fullConfigKey)) {
             cleanupListeners();
@@ -80,17 +84,19 @@ async function promptWithSettingsMemory<T extends string>(config: PromptConfig<T
           }
         });
 
-        // 若使用者未修改設定就直接切回編輯器，重新跳出詢問視窗
-        const editorListener = vscode.window.onDidChangeActiveTextEditor((editor) => {
-          if (editor) {
-            cleanupListeners();
-            resolve(promptWithSettingsMemory(config));
-          }
+        // 同時監聽一般文字編輯器與 Jupyter Notebook 編輯器的切換
+        const textEditorListener = vscode.window.onDidChangeActiveTextEditor((editor) => {
+          if (editor) handleReturnToEditor();
+        });
+
+        const notebookEditorListener = vscode.window.onDidChangeActiveNotebookEditor((editor) => {
+          if (editor) handleReturnToEditor();
         });
 
         const cleanupListeners = () => {
           configListener.dispose();
-          editorListener.dispose();
+          textEditorListener.dispose();
+          notebookEditorListener.dispose();
         };
       }
     });
@@ -159,14 +165,13 @@ export async function confirmDeleteImages(imageCount: number): Promise<boolean> 
   const decision = await promptWithSettingsMemory<OverwriteBehavior>({
     fullConfigKey: 'hugoHelper.deleteImageBehavior',
     title: `找到 ${imageCount} 張以「_」開頭的圖片`,
-    placeholder: '請選擇刪除方式（點擊右上角齒輪可修改預設行為）',
+    placeholder: '請選擇是否刪除舊圖片（點擊右上角齒輪可修改預設行為）',
     cancelResult: 'never',
     options: [
       { label: '$(check) 刪除檔案', description: '僅刪除這一次', result: 'always' },
       { label: '$(check-all) 都刪除（不再詢問）', description: '記住此選擇並更新設定', result: 'always', persistValue: 'always' },
       { label: '$(check) 不刪除', description: '不刪除任何圖檔', result: 'never' },
-      { label: '$(check-all) 都不刪除（不再詢問）', description: '記住此選擇並更新設定', result: 'never', persistValue: 'never' },
-
+      { label: '$(check-all) 都不刪除（不再詢問）', description: '記住此選擇並更新設定', result: 'never', persistValue: 'never' }
     ]
   });
 
