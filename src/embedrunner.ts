@@ -125,7 +125,7 @@ async function clearImageFromText(text, imgRoot) {
     try {
       const apath = decodeURIComponent(fullPath)
       const fileUri = vscode.Uri.file(apath);
-      
+
       // useTrash: true 會將檔案移至資源回收筒，避免誤刪無法救回
       await vscode.workspace.fs.delete(fileUri, { useTrash: true });
       deletedCount++;
@@ -286,7 +286,7 @@ export async function clearOutputResult(
   const fullDeleteRange = new vscode.Range(deleteStart, existingRange.end);
   let txt = document.getText(fullDeleteRange)
   //清除區段中的圖形檔案
-  clearImageFromText(txt, path.dirname(document.uri.fsPath) )
+  clearImageFromText(txt, path.dirname(document.uri.fsPath))
   edit.delete(document.uri, fullDeleteRange);
   await vscode.workspace.applyEdit(edit);
 }
