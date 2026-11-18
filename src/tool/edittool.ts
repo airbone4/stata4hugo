@@ -19,14 +19,15 @@ export async function updateInsertContent(
   content: string
 ): Promise<boolean> {
   const edit = new vscode.WorkspaceEdit();
+  if (content !== '') {
+    if (existingRange) {
+      edit.replace(document.uri, existingRange, content);
+    } else {
+      const lineText = document.lineAt(targetLine).text;
+      const insertPosition = new vscode.Position(targetLine, lineText.length);
+      edit.insert(document.uri, insertPosition, `\n${content}`);
+    }
 
-  if (existingRange) {
-    edit.replace(document.uri, existingRange, content);
-  } else {
-    const lineText = document.lineAt(targetLine).text;
-    const insertPosition = new vscode.Position(targetLine, lineText.length);
-    edit.insert(document.uri, insertPosition, `\n${content}`);
+    return await vscode.workspace.applyEdit(edit);
   }
-
-  return await vscode.workspace.applyEdit(edit);
 }

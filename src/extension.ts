@@ -135,7 +135,32 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         })
     );
+//==================== 摺疊=====================
+// 註冊自訂摺疊範圍提供者：讓 ```{stata} 區塊與 <!-- stata-output-start --> 輸出區塊都能像 { ... } 一樣摺疊
+const foldingProvider = vscode.languages.registerFoldingRangeProvider(
+    [{ language: 'markdown' }, { language: 'rmarkdown' }],
+    {
+        provideFoldingRanges(document: vscode.TextDocument): vscode.FoldingRange[] {
+            const ranges: vscode.FoldingRange[] = [];
+            const text = document.getText();
 
+        
+            const outputRegex = /<!-- stata-output-start -->[\s\S]*?<!-- stata-output-end -->/g;
+            let outputMatch;
+            while ((outputMatch = outputRegex.exec(text)) !== null) {
+                const startLine = document.positionAt(outputMatch.index).line;
+                const endLine = document.positionAt(outputMatch.index + outputMatch[0].length).line;
+                if (endLine > startLine) {
+                    ranges.push(new vscode.FoldingRange(startLine, endLine, vscode.FoldingRangeKind.Region));
+                }
+            }
+
+            return ranges;
+        }
+    }
+);
+
+context.subscriptions.push(foldingProvider);
 //===================================================================
   // 指令1: 轉 md/rmd to ipynb
   let disposable = vscode.commands.registerCommand('hugoHelper.rmd2ipynb', async (uri) => {
@@ -307,8 +332,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // 2. 註冊「執行」指令
     const runCommand = vscode.commands.registerCommand(
         'hugoHelper.runCodeBlock',
-        async (document: vscode.TextDocument, rawinfo:string, codeContent: string, endLine: number) => {
-            await runner.executeAndInsertResult(document, rawinfo,codeContent, endLine);
+        async (document: vscode.TextDocument, rawinfo:string, codeContent: string, startLine:number,endLine: number) => {
+            await runner.executeAndInsertResult(document, rawinfo,codeContent, startLine,endLine);
         }
     );
 

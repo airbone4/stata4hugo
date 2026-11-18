@@ -27,6 +27,7 @@ export class stataCodeLensProvider implements vscode.CodeLensProvider {
     const hasAnyOutput = text.includes(OUTPUT_START_MARKER);
 
     //const regex = /^```\{stta\}\s*\(\r\)?\n([\s\(\S\)]*?)^```\s*$/gm;
+    //chunkRegex
     const regex = /```(\{stata[^\r\n]*)\r?\n([\s\S]*?)\r?\n?```/gm
     let match;
 
@@ -43,7 +44,7 @@ export class stataCodeLensProvider implements vscode.CodeLensProvider {
           title: '▶ 執行 STATA',
           tooltip: '點擊執行此區塊並將結果輸出於下方',
           command: 'hugoHelper.runCodeBlock',
-          arguments: [document, rawinfo, codeContent, endPos.line]
+          arguments: [document, rawinfo, codeContent, startPos.line,endPos.line]
           //arguments: [document, codeContent, endPos.line]
         })
       );
@@ -72,15 +73,7 @@ export class stataCodeLensProvider implements vscode.CodeLensProvider {
         );
       }
 
-      // 4. 清除圖形檔案按鈕（固定顯示在最後面，並透過分隔線隔開）
-      // codeLenses.push(
-      //   new vscode.CodeLens(range, {
-      //     title: '🖼 清除圖形檔案',
-      //     tooltip: '刪除 STTA 產生的圖形檔案',
-      //     command: 'hugoHelper.clearImages',
-      //     arguments: [document]
-      //   })
-      // );
+  
     }
 
     return codeLenses;
@@ -89,6 +82,7 @@ export class stataCodeLensProvider implements vscode.CodeLensProvider {
 
 /**
  * 掃描輸出區塊中引用的圖片並從硬碟刪除
+ * 主要尋找 ![]()
  */
 async function clearImageFromText(text, imgRoot) {
   //const text = document.getText();
@@ -142,14 +136,22 @@ async function clearGeneratedImages(document: vscode.TextDocument) {
   await clearImageFromText(text, docDir)
   
 }
-
+function cleanContinue(atxt){
+    //let cleanoutput= output.split('\n')
+    const beginidx=atxt.findIndex(line => /<---continueCutBegin--->/.test(line));
+    const lastidx = atxt.findIndex(line => /<---continueCutEnd--->/.test(line));
+    atxt.splice(beginidx,lastidx-beginidx+1)
+    return atxt;
+}
 /**
  * 執行程式碼並覆蓋或插入結果
+ * hugoHelper.runCodeBlock 調用
  */
 export async function executeAndInsertResult(
   document: vscode.TextDocument,
   rawinfo: string,
   code: string,
+  startline:number,
   endLine: number
 ) {
   vscode.window.setStatusBarMessage('正在執行 stata...', 2000);
@@ -165,15 +167,25 @@ export async function executeAndInsertResult(
     if (existingRange){
       await clearImageFromText(document.getText(existingRange), path.dirname(document.uri.fsPath))
     }
-    
-    const output = await mockRunstata(document.fileName, rawinfo, code);
-    const formattedOutput = [
+        // 向上檢查並合併前置區塊程式碼
+    const executableCode = collectChainedCode(document, startline, rawinfo, code);
+
+    let output = await mockRunstata(document.fileName, rawinfo, executableCode);
+    //cleanContinue(output.split('\n'))
+     let cleanoutput= output.split('\n')
+     const beginidx=cleanoutput.findIndex(line => /<---continueCutBegin--->/.test(line));
+     const lastidx = cleanoutput.findIndex(line => /<---continueCutEnd--->/.test(line));
+     cleanoutput.splice(beginidx,lastidx-beginidx+1)
+    output = cleanoutput.join('\n')
+    //output 如果是空字串,表示選項有result="hide"
+    const formattedOutput = output?  [
       OUTPUT_START_MARKER,
       //      '```stata?class=.output?preclass=ms-2',
       output?.trim(),
       //      '```',
       OUTPUT_END_MARKER
-    ].join('\n');
+    ].join('\n')
+    :''; 
 
 
     await updateInsertContent(document, endLine, existingRange, formattedOutput);
@@ -183,44 +195,7 @@ export async function executeAndInsertResult(
     vscode.window.showErrorMessage(`stata 執行失敗: ${error.message}`);
   }
 }
-/*
-export async function executeAndInsertResult(
-  document: vscode.TextDocument,
-  rawinfo: string,
-  code: string,
-  endLine: number
-) {
-  vscode.window.setStatusBarMessage('正在執行 stata...', 2000);
 
-  try {
-    // TODO: 替換為實際的 stata 執行邏輯
-    const output = await mockRunstata(document.fileName, rawinfo, code);
-
-    const formattedOutput = [
-      OUTPUT_START_MARKER,
-      //      '```stata?class=.output?preclass=ms-2',
-      output?.trim(),
-      //      '```',
-      OUTPUT_END_MARKER
-    ].join('\n');
-
-    const edit = new vscode.WorkspaceEdit();
-    const existingRange = findExistingOutputRange(document, endLine);
-
-    //清除區域中的圖檔dddd3
-    // if (existingRange){
-    //   await clearImageFromText(document.getText(existingRange), path.dirname(document.uri.fsPath))
-    // }
-
-
-    await updateInsertContent(document, endLine, existingRange, formattedOutput);
-
-    // await vscode.workspace.applyEdit(edit);
-  } catch (error: any) {
-    vscode.window.showErrorMessage(`stata 執行失敗: ${error.message}`);
-  }
-}
-*/
 /**
  * 清除 Code Fence 下方的輸出結果（包含前置換行）
  */
@@ -277,17 +252,6 @@ function findExistingOutputRange(
   return null;
 }
 
-/**
- * 模擬執行函式
- */
-
-// async function mockRunstata(code: string): Promise<string> {
-//     return new Promise((resolve) => {
-//         setTimeout(() => {
-//             resolve(`成功處理了 ${code.trim().split('\n').length} 行指令！`);
-//         }, 500);
-//     });
-// }
 
 
 /**
@@ -319,6 +283,80 @@ export async function clearAllOutputsInDocument(document: vscode.TextDocument) {
 }
 
 
+/**
+ * 向上檢查並收集需要延續執行的前置程式碼
+ * @param document 當前文件
+ * @param currentStartLine 目前執行區塊的起始行號
+ * @param currentRawInfo 目前區塊的標頭字串（例如 "{stata, continue=true}"）
+ * @param currentCode 目前區塊的程式碼內容
+ */
+function collectChainedCode(
+  document: vscode.TextDocument,
+  currentStartLine: number,
+  currentRawInfo: string,
+  currentCode: string
+): string {
+  const { options: currentOptions } = parseChunkHeader(currentRawInfo);
+
+  // 檢查目前區塊是否需要接續上一個區塊（支援 continue=true 或 prev=true）
+  const shouldContinue =
+    currentOptions?.continue === true ||
+    String(currentOptions?.continue).toLowerCase() === 'true' ||
+    currentOptions?.prev === true ||
+    String(currentOptions?.prev).toLowerCase() === 'true';
+
+  if (!shouldContinue) {
+    return currentCode;
+  }
+
+  // 取得目前區塊之前的所有文字
+  const textBefore = document.getText(new vscode.Range(0, 0, currentStartLine, 0));
+  //chunkRegex
+  
+  const regex = /```(\{stata[^\r\n]*)\r?\n([\s\S]*?)\r?\n?```/gm
+  const previousBlocks: Array<{ rawInfo: string; code: string }> = [];
+  let match;
+
+  while ((match = regex.exec(textBefore)) !== null) {
+    previousBlocks.push({
+      rawInfo: match[1],
+      code: match[2]
+    });
+  }
+
+  // 從最接近的前一個區塊開始往回追溯
+  const codeChain: string[] =[];// = [currentCode];
+  
+  for (let i = previousBlocks.length - 1; i >= 0; i--) {
+    const prev = previousBlocks[i];
+    const { options: prevOptions } = parseChunkHeader(prev.rawInfo);
+
+    // 若前置區塊標記了 eval=false，則跳過該區塊
+    if (prevOptions?.eval === false || String(prevOptions?.eval).toLowerCase() === 'false') {
+      continue;
+    }
+
+    // 將前置程式碼加到最前面
+    //codeChain.unshift(`//<---continueCutBegin--->\n${prev.code}\n//<---continueCutEnd--->\n`);
+    codeChain.unshift(`${prev.code}`);
+
+    // 檢查這個前置區塊本身是否也接續更上一個區塊；若沒有，代表連鎖到此為止
+    const prevContinues =
+      prevOptions?.continue === true ||
+      String(prevOptions?.continue).toLowerCase() === 'true' ||
+      prevOptions?.prev === true ||
+      String(prevOptions?.prev).toLowerCase() === 'true';
+
+    if (!prevContinues) {
+      break;
+    }
+  }
+  codeChain.unshift(`//<---continueCutBegin--->\n`)
+  codeChain.push(`graph drop _all \n//<---continueCutEnd--->\n${currentCode}`);
+  return codeChain.join('\n');
+}
+
+//output 如果是空字串,表示選項有result="hide"
 export async function mockRunstata(docpath: string, rawinfo: string, code: string): Promise<any> {
 
 

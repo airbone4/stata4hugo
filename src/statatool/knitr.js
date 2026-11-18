@@ -141,7 +141,9 @@ knit_hooks['output:js'] = (result, options) => {
 
 knit_hooks['output:stata'] = (result, options) => {
   const outtxt = isObjectAndNotMap(result) ? result.txt : "";
-  if (outtxt === "") return ""
+  //if (outtxt === "") return ""
+  const ishidden = options?.result?options['result']=='hide':false;
+  if (ishidden) return ""
 
   const classlist = options.class?.split('.').filter(Boolean) || []
   let rst;
@@ -178,7 +180,7 @@ knit_hooks['output:python'] = (result, options) => {
 };
 
 
-// 5. 核心 Knit 編譯器函數
+// 5. 核心 Knit 編譯器函數 讀取整個Rmarkdown 然後一個一個chunk執行, 應該名子是rmdRender
 async function knit(docpath) {
   const rawMarkdown = fs.readFileSync(docpath, 'utf8')
 
@@ -198,26 +200,6 @@ async function knit(docpath) {
 
 
   for (let i = chunksToProcess.length - 1; i >= 0; i--) {
-
-    //dddd2 -1blok
-    // const chunk = chunksToProcess[i];
-
-    // const tokens = chunk.paramStr.trim().split(/[\s,]+/).filter(Boolean);
-    // const engineName = tokens[0];
-
-    // // chunk 參數處理：改用物件淺拷貝與屬性指派
-    // let currentOpts = { ...opts_chunk };
-    // currentOpts['engineName'] = engineName;
-
-    // for (let j = 1; j < tokens.length; j++) {
-    //   const [key, value] = tokens[j].split('=');
-    //   if (key && value) {
-    //     const parsedValue = ['true', 't'].includes(value.toLowerCase()) ? true : value === 'false' ? false : value;
-    //     currentOpts[key] = parsedValue;
-    //   }
-    // }
-    // const ioenv = parseIO(docpath)
-    // currentOpts = { ...ioenv, ...currentOpts }
 
     let currentOpts = { };
     const chunk = chunksToProcess[i];
